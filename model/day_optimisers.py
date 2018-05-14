@@ -69,11 +69,11 @@ def optimise_gesture_padded(songs, tutor_song, conf, datasaver=None):
         isong = rng.randint(len(songs))
         song = songs[isong]
         ig = rng.randint(len(song.gestures))
-        if ig-nb_pad >= 0:
+        if ig-nb_pad >= 0: # TODO: a confirmer : le padding permet de prendre un geste plus long pour eviter les effets de bords. Oui a priori
             start = song.gestures[ig - nb_pad][0]
         else:
             start = 0
-        end = song.gesture_end(ig + nb_pad)
+        end = song.gesture_end(ig + nb_pad) # the potential index out of bound is handled by the gesture_end function
         logger.info('{}/{}: fit gesture {} of song {} (length {})'.format(
             itrain+1, train_per_day, ig, isong, end-start))
         g = measure(tutor_song[start:end])
@@ -112,7 +112,7 @@ def optimise_gesture_whole(songs, tutor_song, conf, datasaver=None):
         ig = rng.randint(len(song.gestures))
         goal = measure(tutor_song)
         s = song.gen_sound()
-        assert len(tutor_song) == len(s), "%d %d" % (end - start, len(s))
+        assert len(tutor_song) == len(s), "%d %d" % (len(tutor_song), len(s))
         c = measure(s)
         pre_score = comp(goal, c)
         logger.info('{}/{}: fit gesture {} of song {} (length {}, score {})'.format(

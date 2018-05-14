@@ -1,8 +1,6 @@
 appdirs==1.4.3
 aubio==0.4.5
 audioread==2.1.4
--e git+git@github.com:PaulEcoffet/birdsonganalysis.git@8340c036764e6a07422de08cd4666e9b6639f2c3#egg=birdsonganalysis
-birdsynth==1.1
 bleach==2.0.0
 cov-core==1.15.0
 coverage==4.3.4

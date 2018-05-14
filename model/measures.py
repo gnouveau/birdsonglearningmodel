@@ -56,6 +56,11 @@ def genetic_neighbours(songs, all_songs, threshold=2000):
     neighbours = np.ones(len(songs))
     for iref, refsong in enumerate(songs):
         nb_close = 0
+        """
+        TODO: du coup il se mesure a lui meme, donc forcement
+        dans un tour de boucle, song_dist sera egal a zero et donc nb_close
+        faudra au moins 1 ==> est ce problematique ?
+        """
         for isong, othersong in enumerate(all_songs):
             song_dist = 0
             own = [gesture[0] for gesture in refsong.gestures]

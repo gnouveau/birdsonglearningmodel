@@ -11,7 +11,7 @@ Example
 
 Run the algorithm with the parameters from a file in JSON format.
 
-    $ python song_fitter.py --conf confs/conf.json
+    $ python song_fitter.py --config confs/conf.json
 
 Display help to see all the argument that can be given to the song fitter
 script.
@@ -20,7 +20,7 @@ script.
 
 Prevent the editor call to take notes before the run.
 
-    $ python song_fitter.py --conf confs/conf.json --no-desc
+    $ python song_fitter.py --config confs/conf.json --no-desc
 
 """
 
@@ -78,6 +78,8 @@ NIGHT_LEARNING_MODELS = {
 """
 Available comparison methods for the configuration files
 """
+
+
 COMP_METHODS = {'linalg': lambda g, c: np.linalg.norm(g - c),
                 'fastdtw': lambda g, c: fastdtw(g, c, dist=2, radius=1)[0]}
 
@@ -88,7 +90,7 @@ def fit_song(tutor_song, conf, datasaver=None):
     This function returns SongModel.
 
     The fit is split in two phases: A day part and a night part. The day part
-    is an simple optimisation algorithm withing gesture. The night part
+    is a simple optimisation algorithm within gesture. The night part
     is a restructuring algorithm. See details in the modules
     `song_model.SongModel`, `day_optimisers` and `night_optimisers`
 
@@ -103,7 +105,7 @@ def fit_song(tutor_song, conf, datasaver=None):
         The dictionnary of all the parameters needed for the run.
         Values that are required with `fit_song are`:
             'dlm': The day learning model key from DAY_LEARNING_MODELS dict.
-            'nlm': The night learning model key from DAY_LEARNING_MODELS dict.
+            'nlm': The night learning model key from NIGHT_LEARNING_MODELS dict.
             'days': The number of day for a run
             'concurrent': The number of concurrent songs during the day.
             'comp_obj': a callable for the comparison.
@@ -136,7 +138,7 @@ def fit_song(tutor_song, conf, datasaver=None):
     measure = conf['measure_obj']
     comp = conf['comp_obj']
     rng = conf['rng_obj']
-    nb_split = conf.get('split', 10)
+    nb_split = conf.get('split', 10) # get() permet d'allouer la valeur par defaut 10 a nb_split, plutot que provoquer une KeyError si conf['split'] n'existe pas
 
     songs = [SongModel(song=tutor_song, priors=conf['prior'],
                        nb_split=nb_split, rng=rng)
@@ -147,7 +149,7 @@ def fit_song(tutor_song, conf, datasaver=None):
                   scores=get_scores(tutor_song, songs, measure, comp))
 
     for iday in range(nb_day):
-        logger.info('☀️️\t☀️️\t☀️️\tDay {} of {}\t☀️️\t☀️️\t☀️'.format(iday+1, nb_day)) # noqa
+        logger.info('*\t*\t*\tDay {} of {}\t*\t*\t*'.format(iday+1, nb_day))
         with datasaver.set_context('day_optim'):
             songs = day_optimisation(songs, tutor_song, conf,
                                      datasaver=datasaver)
@@ -156,11 +158,18 @@ def fit_song(tutor_song, conf, datasaver=None):
             logger.debug(score)
             datasaver.add(moment='BeforeNight',
                           songs=songs, scores=score)
-            logger.info('💤\t💤\t💤\tNight\t💤\t💤\t💤')
+            logger.info('z\tz\tz\tNight\tz\tz\tz')
             with datasaver.set_context('night_optim'):
-                songs = night_optimisation(songs,
-                                           tutor_song, iday, nb_day, conf, 
-                                           datasaver=datasaver)
+                # TODO: j'ai fait un if moche pour gerer les 2 types d'appel de fonctions avec des parametres differents
+                if conf['nlm'] == "mutate_microbial_diversity_uniform":
+                    songs = night_optimisation(songs,
+                                               tutor_song, iday, nb_day, conf, 
+                                               datasaver=datasaver)
+                else:
+                    songs = night_optimisation(songs,
+                                               tutor_song,
+                                               conf, 
+                                               datasaver=datasaver)
             score = get_scores(tutor_song, songs, measure, comp)
             datasaver.add(moment='AfterNight', songs=songs, scores=score)
         datasaver.write()
@@ -177,6 +186,7 @@ def get_git_revision_hash():
 
     """
     try:
+        # TODO: a mieux comprendre ==> comprendre git...
         return str(subprocess.check_output(['git', 'rev-parse', 'HEAD']),
                    'utf8').strip()
     except OSError:
@@ -196,7 +206,7 @@ def main():
         """
     )
     parser.add_argument('tutor', type=ap.FileType('rb'), nargs='?',
-                        help='The targeted song to learn')
+                        help='The targeted song to learn') # TODO: avec nargs='?', il ne manque pas l'attribut default ?
     parser.add_argument('--config', type=ap.FileType('r'), required=False,
                         help='The config file to take the parameters from.')
     parser.add_argument('-d', '--days', type=int, required=None,
@@ -231,7 +241,7 @@ def main():
     parser.add_argument('--no-desc', dest='edit_desc', action='store_false')
     args = parser.parse_args()
     if args.seed is None:
-        seed = int(datetime.datetime.now().timestamp())
+        seed = int(datetime.datetime.now().timestamp())  # TODO: Peut poser probleme si plusieurs prog lance a la meme seconde.
     else:
         seed = args.seed
     rng = np.random.RandomState(seed)
@@ -245,6 +255,7 @@ def main():
         except KeyError:
             pass
         try:
+            # sr = sampling rate
             sr, tsong = wavfile.read(conf['tutor'])
         except KeyError:
             pass
@@ -273,9 +284,15 @@ def main():
     os.makedirs(path)
     wavfile.write(os.path.join(path, 'tutor.wav'), sr, tsong)
     pmmd = json.load(args.priors)
-    conf.update(pmmd)
-    coefs = json.load(args.coefs)
-    conf.update(coefs)
+    
+#    conf.update(pmmd) TODO: la boucle for remplace le update, evite d'ecraser les valeurs deja definies auparavant par celle dans default_prior_max_min_dev.json
+    for key, value in pmmd.items():
+        if key not in conf:
+            conf[key] = value
+            
+    if 'coefs' not in conf:
+        coefs = json.load(args.coefs)
+        conf.update(coefs)
     if args.edit_desc:
         write_run_description(path)
     with open(os.path.join(path, 'params.json'), 'w') as f:

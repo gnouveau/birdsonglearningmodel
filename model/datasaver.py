@@ -44,7 +44,7 @@ class DataSaver():
 class QuietDataSaver(DataSaver):
     """DataSaver that does nothing."""
 
-    def add(self, label=None, **args):
+    def add(self, label=None, **kwargs):
         """Do nothing on add."""
         pass
 

@@ -31,15 +31,18 @@ class SongModel:
                 raise ValueError('should give prior if no gestures.')
             gestures = [[start, np.array(priors)]
                         for start in sorted([0] +
-                        list(rng.randint(100, len(song) - 100,
+                        list(self.rng.randint(100, len(song) - 100,
                                          size=nb_split-1)))]
             # remove gestures that are too close (or equal)
             remove_gesture = True
             while remove_gesture:
                 remove_gesture = False
+                """
+                TODO: peut etre ameliore car a chq tour de boucle on va recheck
+                les memes premieres valeurs qui sont ok car on reinitialise la boucle"""
                 for i in range(len(gestures)-1):
                     if gestures[i+1][0] - gestures[i][0] < 100:
-                        del gestures[i+1]
+                        del gestures[i+1] # Suppression in the list we are looking with the loop, but it's ok cause we break afterwards
                         remove_gesture = True  # need to remove more stuff
                         break
         self.gestures = deepcopy(gestures)
@@ -47,24 +50,35 @@ class SongModel:
         self.parent = None
 
     def mutate(self, n=1):
-        """Give a new song model with new GTEs."""
+        """Give a new song model with new GTEs.
+        n: number of mutations
+        """
         gestures = deepcopy(self.gestures)
         for i in range(n):
             act = self.rng.uniform()
             if act < 0.2 and len(gestures) > 2:  # Delete a gesture
                 logger.info('deleted')
                 to_del = self.rng.randint(1, len(gestures))
+                """
+                TODO: pkoi on ne peut pas prendre le 1er indice ?
+                on peut supprimer le 1er, et l'ancien second on decale son temps a zero"""
                 del gestures[to_del]
             elif act < 0.4:  # Add a new gesture
                 logger.info('added')
                 add_after = np.random.randint(len(gestures) - 1)
                 try:
+                    """
+                    TODO: prend un intervalle et le raccourci encore plus en enlevant 2*100 (Quelle unite ?)
+                    Si pas un ecart d'au moins 200 (c'est long ? pas long ?), empeche l'ajout
+                    
+                    TODO: add_after +1 : pas un risque d'index out of range si add_after etait le dernier geste ?
+                    """
                     add_at = np.random.randint(gestures[add_after][0] + 100,
                                            gestures[add_after + 1][0] - 100)
                 except ValueError:  # There is no new place
                     continue
                 gestures.insert(add_after + 1,
-                                [add_at, deepcopy(gestures[add_after][1])])
+                                [add_at, deepcopy(gestures[add_after][1])]) # TODO: valider comprehension de l'effet ? ecrase une partie d'un geste avec le debut de ce meme geste sur l'intervalle de temps restant avant le suivant ?
             elif act < 0.6:  # Take a gesture and put it in another gesture
                 logger.info('copied')
                 from_, dest = self.rng.randint(len(gestures), size=2)
@@ -88,6 +102,11 @@ class SongModel:
             gestures.sort(key=lambda x: x[0])
             clean = False
             while not clean:
+                """
+                TODO: petite opti : eviter de reparcourir toute la liste,
+                sauvegarder l'indice
+                Rq / Q : empeche la creation de syllabe < 100 ? pkoi ?
+                """
                 for i in range(1, len(gestures)):
                     if gestures[i][0] - gestures[i - 1][0] < 100:
                         del gestures[i]
@@ -116,9 +135,9 @@ class SongModel:
             range_ = range(len(self.gestures))
         inner_pad = False
         length = self.gesture_end(range_[-1]) - self.gestures[range_[0]][0]
-        if pad == 'last':
+        if pad == 'last': # TODO: pkoi ajouter 2 valeurs a la fin ?
             length += 2
-        elif pad:
+        elif pad: # TODO: quel est l'interet de pad ?
             length += 2 * len(range_)
             inner_pad = True
         ab = np.zeros((length, 2))
@@ -129,7 +148,7 @@ class SongModel:
             start = self.gestures[i][0] - true_start  # correct padding
             end = self.gesture_end(i) - true_start
             size = end - start
-            if pad is True:
+            if pad is True: # TODO: pkoi ajouter 2 valeurs ?
                 end += 2
             assert size != 0
             ab[start:end] = gen_alphabeta(
@@ -142,19 +161,23 @@ class SongModel:
         start = self.gestures[i][0] - true_start  # correct padding
         end = self.gesture_end(i) - true_start
         size = end - start
-        if pad == 'last' or pad is True:
+        if pad == 'last' or pad is True: # TODO: pkoi ajouter 2 valeurs a la fin ?
             end += 2
         ab[start:end] = gen_alphabeta(
             params, size,
             falpha=lambda x, p: only_sin(x, p, nb_sin=3),
             fbeta=lambda x, p: only_sin(x, p, nb_sin=1),
             falpha_nb_args=13, pad=pad, beg=0)
-        assert np.all(ab[:, 0] >= 0)
+        assert np.all(ab[:, 0] >= 0) # TODO: pkoi checker ca ?
         return ab
 
     def gesture_end(self, i):
         """Return the end of a gesture."""
         if i < 0:
+            """
+            TODO: ici l'idee c'etait pour faire des indices negatifs comme les liste de python?
+            dans ce cas, il faudrait faire i = len() + i car i est negatif non ?
+            """
             i = len(self.gestures) - i
         try:
             end = self.gestures[i + 1][0]
