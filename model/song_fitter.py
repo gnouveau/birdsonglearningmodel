@@ -23,7 +23,11 @@ Prevent the editor call to take notes before the run.
     $ python song_fitter.py --config confs/conf.json --no-desc
 
 """
-
+import sys
+if "matplotlib" not in sys.modules:
+    import matplotlib
+    matplotlib.use('agg')    
+    
 import argparse as ap
 import logging
 import os
@@ -32,7 +36,6 @@ import pickle
 import json
 import subprocess
 from pprint import pformat
-import sys
 from shutil import copyfile
 from subprocess import call
 
@@ -307,7 +310,7 @@ def main():
     logger.info(pformat(conf))
 
     conf['rng_obj'] = rng
-    conf['measure_obj'] = lambda x: bsa_measure(x, 44100)
+    conf['measure_obj'] = lambda x: bsa_measure(x, 44100, conf['coefs'])
     conf['comp_obj'] = COMP_METHODS[conf['comp']]
 
     #########################################
