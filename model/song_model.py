@@ -35,15 +35,16 @@ class SongModel:
                                          size=nb_split-1)))]
             # remove gestures that are too close (or equal)
             remove_gesture = True
+            i_start = 0
             while remove_gesture:
                 remove_gesture = False
-                """
-                TODO: peut etre ameliore car a chq tour de boucle on va recheck
-                les memes premieres valeurs qui sont ok car on reinitialise la boucle"""
-                for i in range(len(gestures)-1):
+                for i in range(i_start, len(gestures)-1):
                     if gestures[i+1][0] - gestures[i][0] < 100:
-                        del gestures[i+1] # Suppression in the list we are looking with the loop, but it's ok cause we break afterwards
+                        # deletion in the list looked with the loop
+                        # it's ok because we break afterwards
+                        del gestures[i+1]
                         remove_gesture = True  # need to remove more stuff
+                        i_start = i
                         break
         self.gestures = deepcopy(gestures)
         # Do not keep track of parent for now, avoid blow up in copy
@@ -58,27 +59,22 @@ class SongModel:
             act = self.rng.uniform()
             if act < 0.2 and len(gestures) > 2:  # Delete a gesture
                 logger.info('deleted')
-                to_del = self.rng.randint(1, len(gestures))
-                """
-                TODO: pkoi on ne peut pas prendre le 1er indice ?
-                on peut supprimer le 1er, et l'ancien second on decale son temps a zero"""
+                to_del = self.rng.randint(len(gestures))
                 del gestures[to_del]
+                # if the first gesture is suppressed,
+                # the new one has to start at 0
+                if to_del == 0:
+                    gestures[0][0] = 0
             elif act < 0.4:  # Add a new gesture
                 logger.info('added')
-                add_after = np.random.randint(len(gestures) - 1)
+                add_after = self.rng.randint(len(gestures) - 1)
                 try:
-                    """
-                    TODO: prend un intervalle et le raccourci encore plus en enlevant 2*100 (Quelle unite ?)
-                    Si pas un ecart d'au moins 200 (c'est long ? pas long ?), empeche l'ajout
-                    
-                    TODO: add_after +1 : pas un risque d'index out of range si add_after etait le dernier geste ?
-                    """
-                    add_at = np.random.randint(gestures[add_after][0] + 100,
+                    add_at = self.rng.randint(gestures[add_after][0] + 100,
                                            gestures[add_after + 1][0] - 100)
                 except ValueError:  # There is no new place
                     continue
                 gestures.insert(add_after + 1,
-                                [add_at, deepcopy(gestures[add_after][1])]) # TODO: valider comprehension de l'effet ? ecrase une partie d'un geste avec le debut de ce meme geste sur l'intervalle de temps restant avant le suivant ?
+                                [add_at, deepcopy(gestures[add_after][1])])
             elif act < 0.6:  # Take a gesture and put it in another gesture
                 logger.info('copied')
                 from_, dest = self.rng.randint(len(gestures), size=2)
@@ -101,15 +97,12 @@ class SongModel:
             # clean GTEs
             gestures.sort(key=lambda x: x[0])
             clean = False
+            i_start = 1
             while not clean:
-                """
-                TODO: petite opti : eviter de reparcourir toute la liste,
-                sauvegarder l'indice
-                Rq / Q : empeche la creation de syllabe < 100 ? pkoi ?
-                """
-                for i in range(1, len(gestures)):
+                for i in range(i_start, len(gestures)):
                     if gestures[i][0] - gestures[i - 1][0] < 100:
                         del gestures[i]
+                        i_start = i
                         break
                 else:  # If there is no break (for/else python syntax)
                     clean = True
@@ -174,11 +167,7 @@ class SongModel:
     def gesture_end(self, i):
         """Return the end of a gesture."""
         if i < 0:
-            """
-            TODO: ici l'idee c'etait pour faire des indices negatifs comme les liste de python?
-            dans ce cas, il faudrait faire i = len() + i car i est negatif non ?
-            """
-            i = len(self.gestures) - i
+            i = len(self.gestures) + i # it works because i is negative
         try:
             end = self.gestures[i + 1][0]
         except IndexError:
