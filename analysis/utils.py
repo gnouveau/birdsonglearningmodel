@@ -27,7 +27,7 @@ sns.set_palette('colorblind')
 def _running_mean(x, N):
     y = np.zeros((len(x),))
     for ctr in range(len(x)):
-         y[ctr] = np.sum(x[ctr:(ctr+N)])
+        y[ctr] = np.sum(x[ctr:(ctr+N)])
     return y/N
 
 
@@ -71,13 +71,20 @@ class CacheDict(defaultdict):
 class GridAnalyser:
     """Analyser for the grid search."""
 
-    def __init__(self, run_paths, figsize=(5, 2)):
+    def __init__(self, run_paths, figsize=(5, 2), save_fig=False):
+        """
+        run_paths: list of str. list of the names of all the directories with
+        the different simulation results.
+        ex. of name: seed0+optimise_gesture_whole+default_coef+500_replay+...
+        save_fig: boolean. If True save the plot in the current directory
+        """
         self.figsize = figsize
         self.data = CacheDict(lambda i: self._get_data(i))
         self.conf = CacheDict(lambda i: self._get_conf(i))
         self.rd = CacheDict(lambda i: self._get_rd(i))
         self.run_paths = run_paths
-        self.options_list = []
+        self.save_fig = save_fig
+        self.options_list = [] # list of sets
         for path in self.run_paths:
             options = basename(path).split('+')
             for i, option in enumerate(options):
@@ -97,12 +104,12 @@ class GridAnalyser:
                 self.tutor_audio(i),
                 self.configuration(i),
                 self.learning_curve(i),
-                self.spec_deriv_plot(i, 1, best),
-                self.spec_deriv_plot(i, 10, best),
-                self.spec_deriv_plot(i, -1, best),
+                self.spec_deriv_plot(i, 1, best), # spec deriv of the first day
+                self.spec_deriv_plot(i, 10, best), # ... of the 10th day
+                self.spec_deriv_plot(i, -1, best), # ... of the last day
                 self.synth_spec(i),
                 self.tutor_spec_plot(i),
-                self.gestures_hist(i, -1, best)
+#                self.gestures_hist(i, -1, best)
             ]
         except NoDataException:
             vbox.children = [
@@ -135,7 +142,8 @@ class GridAnalyser:
         #)
         ax.set_yticks([])
         ax.set_xticks([])
-        fig.savefig('{}_{}_{}.png'.format(irun, iday, ismodel), dpi=300)
+        if self.save_fig:
+            fig.savefig('{}_{}_{}.png'.format(irun, iday, ismodel), dpi=300)
         plt.close(fig)
         return plot_to_html(fig)
 
@@ -151,7 +159,8 @@ class GridAnalyser:
             ax.axvline(start//40, color="black", linewidth=1, alpha=0.1)
         ax.set_yticks([])
         ax.set_xticks([])
-        fig.savefig('tutor.png', dpi=300)
+        if self.save_fig:
+            fig.savefig('tutor.png', dpi=300)
         plt.close(fig)
         return plot_to_html(fig)
 
@@ -194,9 +203,10 @@ class GridAnalyser:
             print("boari score", score)
             ax.legend()
         finally:
-            fig.savefig('learning_curve_{}.pdf'.format(i), dpi=300)
+            if self.save_fig:
+                fig.savefig('learning_curve_{}.png'.format(i), dpi=300)
             plt.close(fig)
-        return plot_to_html(fig)
+        return plot_to_html(fig)        
 
     def _get_data(self, i):
         try:
@@ -255,6 +265,7 @@ class GridAnalyser:
             ax.axvline(start//40, color="black", linewidth=1, alpha=0.1)
         ax.set_yticks([])
         ax.set_xticks([])
-        fig.savefig('synth.png', dpi=300)
+        if self.save_fig:
+            fig.savefig('synth.png', dpi=300)
         plt.close(fig)
         return plot_to_html(fig)
