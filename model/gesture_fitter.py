@@ -37,6 +37,12 @@ def fit_gesture_hill(gesture, conf, prior):
 
 
 def _padded_gen_sound(songmodel, range_, change_index, param, out_ab=False):
+    """
+    Modifies one syllable of a song.
+    Creates a new song based on `songmodel` and where the `change_index` 
+    syllable is replaced by a new one created by `falpha` and `fbeta`
+    using `param`
+    """
     alpha_betas = []
     for i in range_[:-1]:
         if i != change_index:

@@ -145,6 +145,9 @@ def fit_song(tutor_song, conf, datasaver=None):
     songs = [SongModel(song=tutor_song, priors=conf['prior'],
                        nb_split=nb_split, rng=rng)
              for i in range(nb_conc_song)]
+    
+    goal = measure(tutor_song)
+    
     if datasaver is None:
         datasaver = QuietDataSaver()
     datasaver.add(moment='Start', songs=songs,
@@ -153,7 +156,11 @@ def fit_song(tutor_song, conf, datasaver=None):
     for iday in range(nb_day):
         logger.info('*\t*\t*\tDay {} of {}\t*\t*\t*'.format(iday+1, nb_day))
         with datasaver.set_context('day_optim'):
-            songs = day_optimisation(songs, tutor_song, conf,
+            if conf['dlm'] == 'optimise_gesture_whole':
+                target = goal
+            else:
+                target = tutor_song
+            songs = day_optimisation(songs, target, conf,
                                      datasaver=datasaver)
         score = get_scores(tutor_song, songs, measure, comp)
         if iday + 1 != nb_day:
@@ -162,7 +169,6 @@ def fit_song(tutor_song, conf, datasaver=None):
                           songs=songs, scores=score)
             logger.info('z\tz\tz\tNight\tz\tz\tz')
             with datasaver.set_context('night_optim'):
-                # TODO: j'ai fait un if moche pour gerer les 2 types d'appel de fonctions avec des parametres differents
                 if conf['nlm'] == "mutate_microbial_diversity_uniform":
                     songs = night_optimisation(songs,
                                                tutor_song, iday, nb_day, conf, 

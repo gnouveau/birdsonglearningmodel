@@ -92,7 +92,7 @@ def optimise_gesture_padded(songs, tutor_song, conf, datasaver=None):
     return songs
 
 
-def optimise_gesture_whole(songs, tutor_song, conf, datasaver=None):
+def optimise_gesture_whole(songs, goal, conf, datasaver=None):
     """Optimise gestures randomly from the song models with dummy algorithm.
 
     Include the previous and next gesture in the evaluation to remove
@@ -102,6 +102,7 @@ def optimise_gesture_whole(songs, tutor_song, conf, datasaver=None):
     comp = conf['comp_obj']
     train_per_day = conf['train_per_day']
     rng = conf['rng_obj']
+    tutor_song = songs[0].song # just for the assert
     if datasaver is None:
         datasaver = QuietDataSaver()
     if rng is None:
@@ -110,7 +111,6 @@ def optimise_gesture_whole(songs, tutor_song, conf, datasaver=None):
         isong = rng.randint(len(songs))
         song = songs[isong]
         ig = rng.randint(len(song.gestures))
-        goal = measure(tutor_song)
         s = song.gen_sound()
         assert len(tutor_song) == len(s), "%d %d" % (len(tutor_song), len(s))
         c = measure(s)
