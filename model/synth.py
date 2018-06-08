@@ -127,6 +127,6 @@ def synthesize(alpha_beta, fixed_normalize=False, boundary=150000):
         scale = boundary
     else:
         scale = np.nanmax(out) - np.nanmin(out)
-    out = 2 * (out - np.nanmin(out)) / scale - 1 # TODO: ici on est deja entre -1 et 1 non ?
-    out = out - np.nanmean(out) # TODO: pkoi on soustrait la moyenne ? la ligne precedente me paraissait ok
+    out = 2 * (out - np.nanmin(out)) / scale - 1
+    out = out - np.nanmean(out)
     return out

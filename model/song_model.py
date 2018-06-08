@@ -111,7 +111,10 @@ class SongModel:
         return SongModel(self.song, gestures, parent=self)
 
     def gen_sound(self, range_=None, fixed_normalize=True):
-        """Generate the full song."""
+        """Generate the full song.
+        
+        if fixed_normalize = False, the song is normalized between -1 and 1
+        """
         ab = self.gen_alphabeta(range_=range_, pad='last')
         out = synthesize(ab, fixed_normalize)
         assert np.isclose(np.nanmean(out), 0)
