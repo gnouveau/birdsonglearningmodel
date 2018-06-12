@@ -174,8 +174,8 @@ def restrict_pop_rank(songs, tutor_song, conf, datasaver=None):
     measure = conf['measure_obj']
     comp = conf['comp_obj']
     rng = conf['rng_obj']
-    scores = get_scores(tutor_song, night_songs, measure, comp)
-    fitness = len(night_songs) - rank(score)
+    score = get_scores(tutor_song, songs, measure, comp)
+    fitness = len(songs) - rank(score)
     return rng.choice(songs, nb_concurrent, replace=False,
                       p=fitness/np.sum(fitness))
 

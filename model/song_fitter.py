@@ -55,7 +55,6 @@ from night_optimisers import mutate_best_models_dummy, \
                              mutate_microbial_diversity_uniform
 from song_model import SongModel
 
-
 logger = logging.getLogger('root')
 EDITOR = os.environ.get('EDITOR', 'vim')
 
@@ -141,6 +140,14 @@ def fit_song(tutor_song, conf, datasaver=None):
     comp = conf['comp_obj']
     rng = conf['rng_obj']
     nb_split = conf.get('split', 10)
+
+    # Normalization
+    tutor_song = np.array(tutor_song, dtype=np.double) # to avoid overflowing calculation
+    min_v = tutor_song.min()
+    max_v = tutor_song.max()
+    tutor_song = 2 * (tutor_song - min_v) / (max_v - min_v) - 1
+    # Centered with the mean
+    tutor_song = tutor_song - tutor_song.mean()
 
     songs = [SongModel(song=tutor_song, priors=conf['prior'],
                        nb_split=nb_split, rng=rng)

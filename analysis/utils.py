@@ -27,6 +27,7 @@ sns.set_palette('colorblind')
 def _running_mean(x, N):
     y = np.zeros((len(x),))
     for ctr in range(len(x)):
+        # TODO: pb en fin de signal avec le debordement d'indice
         y[ctr] = np.sum(x[ctr:(ctr+N)])
     return y/N
 
@@ -104,8 +105,9 @@ class GridAnalyser:
                 self.tutor_audio(i),
                 self.configuration(i),
                 self.learning_curve(i),
+                self.spec_deriv_plot(i, 0, best), # initial spec deriv
                 self.spec_deriv_plot(i, 1, best), # spec deriv of the first day
-                self.spec_deriv_plot(i, 10, best), # ... of the 10th day
+#                self.spec_deriv_plot(i, 10, best), # ... of the 10th day
                 self.spec_deriv_plot(i, -1, best), # ... of the last day
                 self.synth_spec(i),
                 self.tutor_spec_plot(i),

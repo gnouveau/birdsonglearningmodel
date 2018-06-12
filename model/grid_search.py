@@ -70,7 +70,7 @@ def start_run(run_name, conf, res_grid_path):
         with open(join(run_path, 'conf.json'), 'w') as conf_file:
             json.dump({key: conf[key] for key in conf
                        if not key.endswith('obj')}, conf_file, indent=4)
-        songs = fit_song(tutor, conf, datasaver)
+        fit_song(tutor, conf, datasaver)
         datasaver.write(join(run_path, 'data.pkl'))
         print(run_name, 'is over and took', datetime.datetime.now() - start)
         print('By the way, it is {}'.format(
@@ -90,6 +90,10 @@ def main():
     parser.add_argument('confdir', type=str)
     parser.add_argument('--no-desc', dest='edit_desc', action='store_false')
     args = parser.parse_args()
+    """ 
+    TODO: dans le cas de single_job, args.outdir doit etre defini
+    definir par defaut le res_grid_path, (cf ci-dessous) si args.outdir is None
+    """
     if args.single_job:
         with open(args.confdir, 'r') as f:
             conf = json.load(f)
