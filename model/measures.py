@@ -10,16 +10,21 @@ def _running_mean(x, N):
     return (cumsum[N:] - cumsum[:-N]) / N
 
 
-def bsa_measure(sig, sr, coefs=None):
+def bsa_measure(sig, sr, coefs=None, tutor_feat=None):
     """Measure the song or song part with standard birdsong analysis."""
     out = []
     fnames = ['fm', 'am', 'entropy', 'goodness', 'amplitude', 'pitch']
     if coefs is None:
         coefs = {'fm': 1, 'am': 1, 'entropy': 1, 'goodness': 1,
                  'amplitude': 1, 'pitch': 1}
-    features = bsa.normalize_features(
-        bsa.all_song_features(sig, sr, freq_range=256, fft_step=40,
-                              fft_size=1024))
+    if tutor_feat is None:
+        features = bsa.normalize_features(
+                bsa.all_song_features(sig, sr, freq_range=256, fft_step=40,
+                                      fft_size=1024))
+    else:
+        features = bsa.rescaling_with_tutor_values(tutor_feat,
+                bsa.all_song_features(sig, sr, freq_range=256, fft_step=40,
+                                      fft_size=1024))
     for key in fnames:
         coef = coefs[key]
         feat = features[key]
@@ -37,18 +42,17 @@ def mfcc_measure(sig, sr):
     return out
 
 
-def get_scores(tutor_song, song_models, measure, comp):
+def get_scores(goal, song_models, measure, comp):
     """Get the score of each model compared to the tutor song.
 
     tutor_song - The signal of the tutor song
     song_models - A list of all the song models
     """
-    g = measure(tutor_song)
     scores = np.zeros(len(song_models))
     for i in range(len(song_models)):
         sig = song_models[i].gen_sound()
         c = measure(sig)
-        scores[i] = comp(g, c)
+        scores[i] = comp(goal, c)
     return scores
 
 

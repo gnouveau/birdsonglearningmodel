@@ -54,6 +54,7 @@ from night_optimisers import mutate_best_models_dummy, \
                              mutate_microbial_extended_uniform, \
                              mutate_microbial_diversity_uniform
 from song_model import SongModel
+import birdsonganalysis as bsa
 
 logger = logging.getLogger('root')
 EDITOR = os.environ.get('EDITOR', 'vim')
@@ -83,7 +84,6 @@ Available comparison methods for the configuration files
 # TODO: fastdtw use still not fully implemented
 COMP_METHODS = {'linalg': lambda g, c: np.linalg.norm(g - c),
                 'fastdtw': lambda g, c: fastdtw(g, c, dist=2, radius=1)[0]}
-
 
 def fit_song(tutor_song, conf, datasaver=None):
     """Fit a song with a day and a night phase.
@@ -132,6 +132,23 @@ def fit_song(tutor_song, conf, datasaver=None):
     night_optimisers
 
     """
+    # Normalization
+    tutor_song = np.array(tutor_song, dtype=np.double) # to avoid overflowing calculation
+    min_v = tutor_song.min()
+    max_v = tutor_song.max()
+    tutor_song = 2 * (tutor_song - min_v) / (max_v - min_v) - 1
+    # Centered with the mean
+    tutor_song = tutor_song - tutor_song.mean()
+    
+    tutor_feat = bsa.all_song_features(tutor_song, 44100,
+                                       freq_range=256,
+                                       fft_step=40,
+                                       fft_size=1024)
+    
+    conf['measure_obj'] = lambda x: bsa_measure(x, 44100, 
+                                                coefs=conf['coefs'],
+                                                tutor_feat=tutor_feat) 
+    
     day_optimisation = DAY_LEARNING_MODELS[conf['dlm']]
     night_optimisation = NIGHT_LEARNING_MODELS[conf['nlm']]
     nb_day = conf['days']
@@ -140,14 +157,6 @@ def fit_song(tutor_song, conf, datasaver=None):
     comp = conf['comp_obj']
     rng = conf['rng_obj']
     nb_split = conf.get('split', 10)
-
-    # Normalization
-    tutor_song = np.array(tutor_song, dtype=np.double) # to avoid overflowing calculation
-    min_v = tutor_song.min()
-    max_v = tutor_song.max()
-    tutor_song = 2 * (tutor_song - min_v) / (max_v - min_v) - 1
-    # Centered with the mean
-    tutor_song = tutor_song - tutor_song.mean()
 
     songs = [SongModel(song=tutor_song, priors=conf['prior'],
                        nb_split=nb_split, rng=rng)
@@ -158,7 +167,7 @@ def fit_song(tutor_song, conf, datasaver=None):
     if datasaver is None:
         datasaver = QuietDataSaver()
     datasaver.add(moment='Start', songs=songs,
-                  scores=get_scores(tutor_song, songs, measure, comp))
+                  scores=get_scores(goal, songs, measure, comp))
 
     for iday in range(nb_day):
         logger.info('*\t*\t*\tDay {} of {}\t*\t*\t*'.format(iday+1, nb_day))
@@ -169,7 +178,7 @@ def fit_song(tutor_song, conf, datasaver=None):
                 target = tutor_song
             songs = day_optimisation(songs, target, conf,
                                      datasaver=datasaver)
-        score = get_scores(tutor_song, songs, measure, comp)
+        score = get_scores(goal, songs, measure, comp)
         if iday + 1 != nb_day:
             logger.debug(score)
             datasaver.add(moment='BeforeNight',
@@ -178,18 +187,18 @@ def fit_song(tutor_song, conf, datasaver=None):
             with datasaver.set_context('night_optim'):
                 if conf['nlm'] == "mutate_microbial_diversity_uniform":
                     songs = night_optimisation(songs,
-                                               tutor_song, iday, nb_day, conf, 
+                                               goal, iday, nb_day, conf, 
                                                datasaver=datasaver)
                 else:
                     songs = night_optimisation(songs,
-                                               tutor_song,
+                                               goal,
                                                conf, 
                                                datasaver=datasaver)
-            score = get_scores(tutor_song, songs, measure, comp)
+            score = get_scores(goal, songs, measure, comp)
             datasaver.add(moment='AfterNight', songs=songs, scores=score)
         datasaver.write()
     datasaver.add(moment='End', songs=songs,
-                  scores=get_scores(tutor_song, songs, measure, comp))
+                  scores=get_scores(goal, songs, measure, comp))
     return songs
 
 
