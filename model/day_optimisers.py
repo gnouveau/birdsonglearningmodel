@@ -7,7 +7,7 @@ import numpy as np
 
 from datasaver import QuietDataSaver
 from gesture_fitter import fit_gesture_hill, fit_gesture_padded, \
-                           fit_gesture_whole
+                           fit_gesture_whole, fit_gesture_whole_local_search
 from synth import gen_sound, only_sin
 
 logger = logging.getLogger('DayOptim')
@@ -127,6 +127,38 @@ def optimise_gesture_whole(songs, goal, conf, datasaver=None):
             pre_score, hill_score)
     return songs
 
+
+def optimise_gesture_whole_local_search(songs, goal, conf, datasaver=None):
+    """
+    Optimise gestures randomly from the song models
+    with a stochastic local search
+    """
+    measure = conf['measure_obj']
+    comp = conf['comp_obj']
+    train_per_day = conf['train_per_day']
+    rng = conf['rng_obj']
+    if datasaver is None:
+        datasaver = QuietDataSaver()
+    if rng is None:
+        rng = np.random.RandomState()
+    for itrain in range(train_per_day):
+        isong = rng.randint(len(songs))
+        song = songs[isong]
+        ig = rng.randint(len(song.gestures))
+        s = song.gen_sound()
+        c = measure(s)
+        pre_score = comp(goal, c)
+        logger.info('{}/{}: fit gesture {} of song {} (length {}, score {})'.format(
+            itrain+1, train_per_day, ig, isong, len(s), pre_score))
+        res, hill_score = fit_gesture_whole_local_search(
+            goal, song, ig, conf)
+        # datasaver.add(pre_score=pre_score,
+        #               new_score=hill_score, isong=isong, ig=ig)
+        songs[isong].gestures[ig][1] = deepcopy(res)
+        logger.info('new score {}'.format(hill_score))
+        assert pre_score >= hill_score, "{} >= {} est faux".format(
+            pre_score, hill_score)
+    return songs
 
 def optimise_gesture_cmaes(songs, tutor_song, measure, comp):
     """Optimise gestures guided with a CMA-ES algorithm."""

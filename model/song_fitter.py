@@ -45,7 +45,8 @@ from scipy.io import wavfile
 
 from datasaver import DataSaver, QuietDataSaver
 from day_optimisers import optimise_gesture_dummy, optimise_gesture_padded,\
-                           optimise_gesture_whole
+                           optimise_gesture_whole,\
+                           optimise_gesture_whole_local_search
 from measures import bsa_measure, get_scores
 from night_optimisers import mutate_best_models_dummy, \
                              mutate_best_models_elite, \
@@ -65,7 +66,8 @@ Available day learning models for the configuration files
 DAY_LEARNING_MODELS = {
     'optimise_gesture_dummy': optimise_gesture_dummy,
     'optimise_gesture_padded': optimise_gesture_padded,
-    'optimise_gesture_whole': optimise_gesture_whole
+    'optimise_gesture_whole': optimise_gesture_whole,
+    'optimise_gesture_whole_local_search': optimise_gesture_whole_local_search
 }
 """
 Available night learning models for the configuration files
@@ -324,12 +326,12 @@ def main():
         conf.update(coefs)
     if args.edit_desc:
         write_run_description(path)
-    with open(os.path.join(path, 'params.json'), 'w') as f:
+    with open(os.path.join(path, 'conf.json'), 'w') as f:
         json.dump({k: conf[k] for k in conf if not k.endswith('_obj')},
                   f, indent=4)  # human readable parameters
     if args.edit_conf:
-        call([EDITOR, os.path.join(path, 'params.json')])
-        with open(os.path.join(path, 'params.json'), 'r') as f:
+        call([EDITOR, os.path.join(path, 'conf.json')])
+        with open(os.path.join(path, 'conf.json'), 'r') as f:
             conf = json.load(f)
 
     datasaver = DataSaver(defaultdest=os.path.join(path, 'data_cur.pkl'))

@@ -32,6 +32,27 @@ def _running_mean(x, N):
     return y/N
 
 
+def boari_synth_song_error(tutor_song, synth_song, p_coefs, tutor_feat=None):
+    """Compute the error distance only on syllables.
+    if tutor_feat=None: MAD normalization
+    if tutor_feat is defined: rescaling of the features values
+    """
+    amp = bsa.song_amplitude(synth_song, 256, 40, 1024)
+    sort_amp = np.sort(amp)
+    sort_amp = sort_amp[len(sort_amp)//10:]
+    i_max_diff = np.argmax(_running_mean(np.diff(sort_amp), 100))
+    threshold = sort_amp[i_max_diff]
+    
+    msynth = bsa_measure(synth_song, 44100, coefs=p_coefs,
+                         tutor_feat=tutor_feat)
+    mtutor = bsa_measure(tutor_song, 44100, coefs=p_coefs,
+                         tutor_feat=tutor_feat)
+    
+    score = np.linalg.norm(msynth[amp > threshold] - mtutor[amp > threshold]) / np.sum(amp > threshold) * len(amp)
+    
+    return score
+
+
 def draw_learning_curve(rd, ax=None):
     score_array = np.array([list(a) for a in rd['scores']]).T
     if ax is None:
@@ -189,18 +210,10 @@ class GridAnalyser:
         else:
             sr, synth = wavfile.read('../data/{}_out.wav'.format(
                 basename(self.conf[i]['tutor']).split('.')[0]))
-
-            # Do compute score on BA synth only on syllables
-            amp = bsa.song_amplitude(synth, 256, 40, 1024)
-            sort_amp = np.sort(amp)
-            sort_amp = sort_amp[len(sort_amp)//10:]  # discard too low values
-            i_max_diff = np.argmax(_running_mean(np.diff(sort_amp), 100))
-            threshold = sort_amp[i_max_diff]
-
             sr, tutor = wavfile.read(join(self.run_paths[i], 'tutor.wav'))
-            msynth = bsa_measure(synth, 44100, coefs=self.conf[i]['coefs'])
-            mtutor = bsa_measure(tutor, 44100, coefs=self.conf[i]['coefs'])
-            score = np.linalg.norm(msynth[amp > threshold] - mtutor[amp > threshold]) / np.sum(amp > threshold) * len(amp)
+
+            score = boari_synth_song_error(tutor, synth, self.conf[i]['coefs'])
+            
             ax.axhline(score, color="orange", label="Erreur avec méthode de Boari")
             print("boari score", score)
             ax.legend()

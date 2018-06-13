@@ -120,7 +120,7 @@ def mutate_microbial_diversity(songs, goal, cur_day, nb_day,
     nb_replay = conf['replay']
     rng = conf['rng_obj']
     threshold = conf.get('diversity_threshold', 2000)
-    bloat_weight = conf.get('bloat_weight', 0)
+#    bloat_weight = conf.get('bloat_weight', 0)
     diversity_weight = conf.get('diversity_weight', 1)
     diversity_decay = conf.get('decay', None)
     if diversity_decay == 'linear':
@@ -130,10 +130,15 @@ def mutate_microbial_diversity(songs, goal, cur_day, nb_day,
         picked_songs = rng.choice(len(songs), size=2, replace=False)
         scores = get_scores(goal, songs[picked_songs], measure, comp)
         nb_similar = genetic_neighbours(songs[picked_songs], songs, threshold)
-        nb_gestures = np.array([len(songs[picked_songs[0]].gestures),
-                                len(songs[picked_songs[1]].gestures)])
-        best = np.argmin(scores * (nb_similar**diversity_weight)
-                         * (nb_gestures**bloat_weight))
+        
+        # Penalise if too much gestures
+#        nb_gestures = np.array([len(songs[picked_songs[0]].gestures),
+#                                len(songs[picked_songs[1]].gestures)])
+#        best = np.argmin(scores * (nb_similar**diversity_weight)
+#                         * (nb_gestures**bloat_weight))
+        
+        best = np.argmin(scores * (nb_similar**diversity_weight))
+        
         loser = 1 - best  # if best == 0: loser = 1, else: loser = 0
         songs[picked_songs[loser]] = songs[picked_songs[best]].mutate()
     return songs
