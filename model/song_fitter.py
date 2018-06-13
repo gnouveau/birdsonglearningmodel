@@ -288,6 +288,10 @@ def main():
             sr, tsong = wavfile.read(conf['tutor'])
         except KeyError:
             pass
+        try:
+            rng = np.random.RandomState(conf['seed'])
+        except KeyError:
+            pass
         conf['commit'] = get_git_revision_hash()
     argdata = {'days': args.days,
                'train_per_day': args.train_per_day,
@@ -305,7 +309,7 @@ def main():
     if tsong is None:
         sr, tsong = wavfile.read(args.tutor)
 
-    # the parameters in the command-line ocerwrite the ones defined with --config
+    # the parameters in the command-line overwrite the ones defined with --config
     conf.update({k: v for k, v in argdata.items() if v is not None})
 
     date = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
