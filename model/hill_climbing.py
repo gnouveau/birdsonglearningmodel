@@ -73,7 +73,7 @@ def hill_climbing(function, goal, guess,
     return best_guess, best_res, best_score
 
 
-def stochastic_hill_climbing(measure_fct, goal, guess, guess_deviation=0.01,
+def stochastic_hill_climbing(function, goal, guess, guess_deviation=0.01,
                              goal_delta=0.01, comparison_method=None,
                              max_iter=100000, rng=None, verbose=False,
                              guess_min=None, guess_max=None):
@@ -114,14 +114,14 @@ def stochastic_hill_climbing(measure_fct, goal, guess, guess_deviation=0.01,
     best_guess = np.clip(guess, guess_min, guess_max)
     if not np.allclose(best_guess, guess):
         logger.warning('guess has been clipped.')
-    best_res = measure_fct(best_guess)
+    best_res = function(best_guess)
     best_score = comparison_method(goal, best_res)
     init_score = best_score
     i = 0
     while comparison_method(goal, best_res) > goal_delta and i < max_iter:
         cur_guess = rng.multivariate_normal(best_guess, guess_deviation)
         np.clip(cur_guess, guess_min, guess_max, out=cur_guess)
-        cur_res = measure_fct(cur_guess)
+        cur_res = function(cur_guess)
         cur_score = comparison_method(goal, cur_res)
         if cur_score < best_score:
             best_score = cur_score
