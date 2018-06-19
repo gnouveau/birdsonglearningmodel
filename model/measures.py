@@ -80,3 +80,17 @@ def genetic_neighbours(songs, all_songs, threshold=2000):
                 nb_close += 1
         neighbours[iref] = nb_close
     return neighbours
+
+
+def normalize_and_center(song):
+    """Normalize the song between -1 and 1 then centres it around its mean.
+    Initialy implemented to normalize the tutor song
+    """
+    # Normalization
+    song = np.array(song, dtype=np.double) # to avoid overflowing calculation
+    min_v = song.min()
+    max_v = song.max()
+    song = 2 * (song - min_v) / (max_v - min_v) - 1
+    # Centered with the mean
+    song = song - song.mean()
+    return song

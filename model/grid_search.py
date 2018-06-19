@@ -37,9 +37,11 @@ def get_confs(confdir):
                 try:
                     confs[-1].append(json.load(conf_file))
                 except json.decoder.JSONDecodeError:
-                    print(conf_file_name)
+                    print('json.decoder.JSONDecodeError:', conf_file_name)
                     raise
+        
     for conf_prod in itertools.product(*confs):
+        
         tot_conf = dict()
         names = []
         for conf in conf_prod:
@@ -48,6 +50,7 @@ def get_confs(confdir):
                 names.append(conf['name'])
             except KeyError:
                 pass
+            
         yield '+'.join(names), tot_conf
 
 
@@ -56,9 +59,12 @@ def start_run(run_name, conf, res_grid_path):
     try:
         start = datetime.datetime.now()
         print('starting {}'.format(run_name))
-        conf['rng_obj'] = np.random.RandomState()
-        conf['measure_obj'] = lambda x: bsa_measure(x, 44100,
-                                                    coefs=conf['coefs'])
+        
+        if conf['seed'] is not None:
+            conf['rng_obj'] = np.random.RandomState(conf['seed'])
+        else:
+            conf['rng_obj'] = np.random.RandomState()
+        
         conf['comp_obj'] = COMP_METHODS[conf.get('comp', 'linalg')]
         conf['name'] = run_name
         with open(conf['tutor'], 'rb') as tutor_f:
@@ -90,10 +96,8 @@ def main():
     parser.add_argument('confdir', type=str)
     parser.add_argument('--no-desc', dest='edit_desc', action='store_false')
     args = parser.parse_args()
-    """ 
-    TODO: dans le cas de single_job, args.outdir doit etre defini
-    definir par defaut le res_grid_path, (cf ci-dessous) si args.outdir is None
-    """
+    
+    # /!\ If single-job is used, outdir has to be defined
     if args.single_job:
         with open(args.confdir, 'r') as f:
             conf = json.load(f)

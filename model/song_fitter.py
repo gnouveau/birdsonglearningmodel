@@ -47,7 +47,7 @@ from datasaver import DataSaver, QuietDataSaver
 from day_optimisers import optimise_gesture_dummy, optimise_gesture_padded,\
                            optimise_gesture_whole,\
                            optimise_gesture_whole_local_search
-from measures import bsa_measure, get_scores
+from measures import bsa_measure, get_scores, normalize_and_center
 from night_optimisers import mutate_best_models_dummy, \
                              mutate_best_models_elite, \
                              mutate_microbial, \
@@ -134,13 +134,7 @@ def fit_song(tutor_song, conf, datasaver=None):
     night_optimisers
 
     """
-    # Normalization
-    tutor_song = np.array(tutor_song, dtype=np.double) # to avoid overflowing calculation
-    min_v = tutor_song.min()
-    max_v = tutor_song.max()
-    tutor_song = 2 * (tutor_song - min_v) / (max_v - min_v) - 1
-    # Centered with the mean
-    tutor_song = tutor_song - tutor_song.mean()
+    tutor_song = normalize_and_center(tutor_song)
     
     tutor_feat = bsa.all_song_features(tutor_song, 44100,
                                        freq_range=256,
@@ -174,7 +168,9 @@ def fit_song(tutor_song, conf, datasaver=None):
     for iday in range(nb_day):
         logger.info('*\t*\t*\tDay {} of {}\t*\t*\t*'.format(iday+1, nb_day))
         with datasaver.set_context('day_optim'):
-            if conf['dlm'] == 'optimise_gesture_whole':
+            cond1 = conf['dlm'] == 'optimise_gesture_whole'
+            cond2 = conf['dlm'] == 'optimise_gesture_whole_local_search'
+            if cond1 or cond2:
                 target = goal
             else:
                 target = tutor_song
@@ -289,7 +285,8 @@ def main():
         except KeyError:
             pass
         try:
-            rng = np.random.RandomState(conf['seed'])
+            seed = conf['seed']
+            rng = np.random.RandomState(seed)
         except KeyError:
             pass
         conf['commit'] = get_git_revision_hash()
