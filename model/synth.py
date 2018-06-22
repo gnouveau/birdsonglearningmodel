@@ -115,6 +115,8 @@ def gen_alphabeta(params, length, falpha, fbeta,
 def synthesize(alpha_beta, fixed_normalize=False, boundary=150000):
     """Return the song signal given the alpha beta parameters.
 
+    This function reduce by 2 samples the song produced
+
     alpha_beta - A 2d numpy.array of shape (length, 2)
                  with alpha on the alpha_beta[:, 0] elements
                  and beta on the alpha_beta[:, 1] elements

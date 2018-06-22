@@ -1,4 +1,6 @@
 #! /bin/bash
+
+# usage: ./getalphabetawav.sh <song_name>.wav
 first_dir="$(pwd)"
 dir=$(dirname "$(realpath "$0")")
 
@@ -53,6 +55,8 @@ echo "Length of out signal"
 echo `cat song_gabwtmp_out_t.dat | wc -l`
 
 echo "Converting to WAV file"
+
+# The synthesized song is normalized and centred around his mean
 
 python - << EOF
 from scipy.io import wavfile

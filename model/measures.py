@@ -57,25 +57,29 @@ def get_scores(goal, song_models, measure, comp):
 
 
 def genetic_neighbours(songs, all_songs, threshold=2000):
-    neighbours = np.ones(len(songs))
+    """Count the number of neighbors of each songs.
+
+    A neighbour is a song of whom the gesture beginnning are close enough
+    to those of the song.
+    """
+    neighbours = np.zeros(len(songs))
     for iref, refsong in enumerate(songs):
         nb_close = 0
-        """
-        TODO: du coup il se mesure a lui meme, donc forcement
-        dans un tour de boucle, song_dist sera egal a zero et donc nb_close
-        faudra au moins 1 ==> est ce problematique ?
-        """
+        own = [gesture[0] for gesture in refsong.gestures]
         for isong, othersong in enumerate(all_songs):
+            if othersong is refsong:
+                continue
             song_dist = 0
-            own = [gesture[0] for gesture in refsong.gestures]
-            for i, gesture in enumerate(othersong.gestures):
-                start = gesture[0]
-                near_i = bisect_left(own, start)
-                if near_i >= len(own) - 1:
-                    near_i = len(own) - 2
-                cur_dist = np.min((np.abs(start - own[near_i]),
-                                   np.abs(start - own[near_i+1])))
-                song_dist += cur_dist
+            other = [gesture[0] for gesture in othersong.gestures]
+            for i, start in enumerate(own):
+                near_i = bisect_left(other, start)
+                if near_i == 0:
+                    song_dist += np.abs(start - other[0])
+                elif near_i == len(other):
+                    song_dist += np.abs(start - other[-1])
+                else:
+                    song_dist += np.min((np.abs(start - other[near_i - 1]),
+                                        np.abs(start - other[near_i])))
             if song_dist < threshold:
                 nb_close += 1
         neighbours[iref] = nb_close

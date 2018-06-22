@@ -8,7 +8,6 @@ import io
 import base64
 from IPython.display import Audio
 from ipywidgets import widgets
-import copy
 import json
 import pickle
 import sys
@@ -17,8 +16,7 @@ import birdsonganalysis as bsa
 
 sys.path.append('../model')
 
-from song_model import SongModel
-from measures import bsa_measure
+from measures import bsa_measure, normalize_and_center
 
 sns.set_palette('colorblind')
 
@@ -60,12 +58,13 @@ def draw_learning_curve(rd, ax=None):
         ax = fig.gca()
     for i in range(1, len(rd['scores']), 2):
         ax.axvspan(i, i+1, facecolor='darkblue', alpha=0.1)
-    sns.tsplot(score_array, err_style='unit_traces', ax=ax)
+    for scores in score_array:
+        plt.plot(scores)
     ax.set_xticks(range(0, len(rd['scores']), 20))
     ax.set_xticklabels(range(0, len(rd['scores'])//2, 10))
-    ax.set_ylabel('Distance au chant du tuteur')
-    ax.set_xlabel('Jour')
-    ax.set_title('Courbe d\'apprentissage')
+    ax.set_ylabel('Error distance from tutor')
+    ax.set_xlabel('Day')
+    ax.set_title('Learning curve')
     return ax
 
 
@@ -117,21 +116,27 @@ class GridAnalyser:
 
 
 
-    def show(self, i, vbox):
+    def show(self, i, vbox, rescaling=False):
+        """
+        rescaling: boolean. If True use the rescaling measure to calculate
+        the error score for the Boari synthesized song
+        """
         try:
-            best = np.argmax(self.rd[i]['scores'].iloc[-1])
+            best = np.argmin(self.rd[i]['scores'].iloc[-1])
+            mid_i = len(self.rd[i])//2
+            if self.conf[i]['days'] % 2 == 0:
+                 mid_i -= 1
             vbox.children = [
                 self.title(i),
-                self.audio(i, -1, best),
                 self.tutor_audio(i),
+                self.audio(i, -1, best),
                 self.configuration(i),
-                self.learning_curve(i),
+                self.learning_curve(i, rescaling), # calculate error score for Boari song
                 self.spec_deriv_plot(i, 0, best), # initial spec deriv
-                self.spec_deriv_plot(i, 1, best), # spec deriv of the first day
-#                self.spec_deriv_plot(i, 10, best), # ... of the 10th day
-                self.spec_deriv_plot(i, -1, best), # ... of the last day
+                self.spec_deriv_plot(i, mid_i, best), # spec deriv at the middle of the simulation
+                self.spec_deriv_plot(i, -1, best), # spec deriv at the last day
                 self.synth_spec(i),
-                self.tutor_spec_plot(i),
+                self.tutor_spec_plot(i)
 #                self.gestures_hist(i, -1, best)
             ]
         except NoDataException:
@@ -163,6 +168,7 @@ class GridAnalyser:
         #ax.set_title('Spectrogram of model {} on day {} (run {})'.format(
         #    ismodel, iday, irun)
         #)
+        ax.set_title(self.pretty_title(irun, iday))
         ax.set_yticks([])
         ax.set_xticks([])
         if self.save_fig:
@@ -182,6 +188,7 @@ class GridAnalyser:
             ax.axvline(start//40, color="black", linewidth=1, alpha=0.1)
         ax.set_yticks([])
         ax.set_xticks([])
+        ax.set_title("Tutor song spectral derivative")
         if self.save_fig:
             fig.savefig('tutor.png', dpi=300)
         plt.close(fig)
@@ -200,7 +207,12 @@ class GridAnalyser:
         return table
 
 
-    def learning_curve(self, i):
+    def learning_curve(self, i, rescaling=False):
+        """
+        rescaling: boolean. If True, use the rescaling measure to calculate
+        the error score.
+        """
+        tutor_feat = None
         fig = plt.figure(figsize=self.figsize)
         ax = fig.gca()
         try:
@@ -211,11 +223,21 @@ class GridAnalyser:
             sr, synth = wavfile.read('../data/{}_out.wav'.format(
                 basename(self.conf[i]['tutor']).split('.')[0]))
             sr, tutor = wavfile.read(join(self.run_paths[i], 'tutor.wav'))
-
-            score = boari_synth_song_error(tutor, synth, self.conf[i]['coefs'])
-            
+            if rescaling:
+                tutor = normalize_and_center(tutor)
+                tutor_feat = bsa.all_song_features(tutor, 44100,
+                                                   freq_range=256,
+                                                   fft_step=40,
+                                                   fft_size=1024)
+            score = boari_synth_song_error(tutor,
+                                           synth,
+                                           self.conf[i]['coefs'],
+                                           tutor_feat)
             ax.axhline(score, color="orange", label="Erreur avec méthode de Boari")
-            print("boari score", score)
+            print("Boari score:", score)
+            best = np.argmin(self.rd[i]['scores'].iloc[-1])
+            best_score = self.rd[i]['scores'].iloc[-1][best]
+            print("Best song model score:", best_score)
             ax.legend()
         finally:
             if self.save_fig:
@@ -280,7 +302,23 @@ class GridAnalyser:
             ax.axvline(start//40, color="black", linewidth=1, alpha=0.1)
         ax.set_yticks([])
         ax.set_xticks([])
+        ax.set_title("Boari's synth spectral derivative")
         if self.save_fig:
             fig.savefig('synth.png', dpi=300)
         plt.close(fig)
         return plot_to_html(fig)
+
+    def pretty_title(self, irun, iday):
+        """return the moment of the simulation relative to the index"""
+        if iday < 0:
+            iday = len(self.rd[irun]) + iday
+        if iday == 0:
+            return "Start"
+        elif iday == len(self.rd[irun]) - 1:
+            return "End"
+        else:
+            if iday % 2 ==0:
+                moment = "Start"
+            else:
+                moment = "End"
+            return "{} of day {}".format(moment, iday//2 + 1 )
