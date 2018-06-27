@@ -17,14 +17,14 @@ def bsa_measure(sig, sr, coefs=None, tutor_feat=None):
     if coefs is None:
         coefs = {'fm': 1, 'am': 1, 'entropy': 1, 'goodness': 1,
                  'amplitude': 1, 'pitch': 1}
+    s_feat = bsa.all_song_features(sig, sr, 
+                                   freq_range=bsa.FREQ_RANGE, 
+                                   fft_step=bsa.FFT_STEP,
+                                   fft_size=bsa.FFT_SIZE)
     if tutor_feat is None:
-        features = bsa.normalize_features(
-                bsa.all_song_features(sig, sr, freq_range=256, fft_step=40,
-                                      fft_size=1024))
+        features = bsa.normalize_features(s_feat)
     else:
-        features = bsa.rescaling_with_tutor_values(tutor_feat,
-                bsa.all_song_features(sig, sr, freq_range=256, fft_step=40,
-                                      fft_size=1024))
+        features = bsa.rescaling_with_tutor_values(tutor_feat, s_feat)
     for key in fnames:
         coef = coefs[key]
         feat = features[key]
@@ -35,10 +35,10 @@ def bsa_measure(sig, sr, coefs=None, tutor_feat=None):
 
 def mfcc_measure(sig, sr):
     """Measure the song or song part with mfcc."""
-    out = mfcc(sig, sr, numcep=8, appendEnergy=True, winstep=40/sr,
-               winlen=1024/sr)  # FIXME should not be hardwritten 40, 1024
+    out = mfcc(sig, sr, numcep=8, appendEnergy=True, winstep=bsa.FFT_STEP/sr,
+               winlen=bsa.FFT_SIZE/sr)
     out[:, 0] = bsa.song_amplitude(
-        sig, fft_step=40, fft_size=1024)[:out.shape[0]]
+        sig, fft_step=bsa.FFT_STEP, fft_size=bsa.FFT_SIZE)[:out.shape[0]]
     return out
 
 

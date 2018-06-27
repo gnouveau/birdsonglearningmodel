@@ -131,6 +131,7 @@ def mutate_microbial_diversity(songs, goal, cur_day, nb_day,
         scores = get_scores(goal, songs[picked_songs], measure, comp)
         nb_similar = genetic_neighbours(songs[picked_songs], songs, threshold)
         
+        # TODO: to choose:  if used or not
         # Penalise if too much gestures
 #        nb_gestures = np.array([len(songs[picked_songs[0]].gestures),
 #                                len(songs[picked_songs[1]].gestures)])

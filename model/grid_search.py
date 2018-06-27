@@ -9,16 +9,13 @@ import json
 from glob import glob
 import logging
 import itertools
-from pprint import pprint
 import subprocess
-import multiprocessing
 
 import numpy as np
 from scipy.io import wavfile
 from joblib import Parallel, delayed, cpu_count
 
 from song_fitter import fit_song, COMP_METHODS
-from measures import bsa_measure
 from datasaver import DataSaver
 
 logger = logging.getLogger('root')

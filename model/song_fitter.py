@@ -136,12 +136,12 @@ def fit_song(tutor_song, conf, datasaver=None):
     """
     tutor_song = normalize_and_center(tutor_song)
     
-    tutor_feat = bsa.all_song_features(tutor_song, 44100,
-                                       freq_range=256,
-                                       fft_step=40,
-                                       fft_size=1024)
+    tutor_feat = bsa.all_song_features(tutor_song, bsa.SR,
+                                       freq_range=bsa.FREQ_RANGE,
+                                       fft_step=bsa.FFT_STEP,
+                                       fft_size=bsa.FFT_SIZE)
     
-    conf['measure_obj'] = lambda x: bsa_measure(x, 44100, 
+    conf['measure_obj'] = lambda x: bsa_measure(x, bsa.SR, 
                                                 coefs=conf['coefs'],
                                                 tutor_feat=tutor_feat) 
     

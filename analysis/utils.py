@@ -35,20 +35,49 @@ def boari_synth_song_error(tutor_song, synth_song, p_coefs, tutor_feat=None):
     if tutor_feat=None: MAD normalization
     if tutor_feat is defined: rescaling of the features values
     """
-    amp = bsa.song_amplitude(synth_song, 256, 40, 1024)
+    if tutor_feat is not None:
+        t_amp = tutor_feat["amplitude"]
+    else:
+        t_amp = None
+
+    amp, th = carac_to_calculate_err_of_synth(synth_song, t_amp=t_amp)
+    
+    msynth = bsa_measure(synth_song, bsa.SR, coefs=p_coefs,
+                         tutor_feat=tutor_feat)
+    mtutor = bsa_measure(tutor_song, bsa.SR, coefs=p_coefs,
+                         tutor_feat=tutor_feat)
+    
+    score = np.linalg.norm(msynth[amp > th] - mtutor[amp > th]) / np.sum(amp > th) * len(amp)
+    
+    return score
+
+
+def carac_to_calculate_err_of_synth(synth_song, t_amp=None):
+    """
+    calculation to do after carac_to_calculate_err_of_synth:
+    err_per_feat_synth = err_per_feat(mtutor[amp > th], msynth[amp > th])
+    score = np.linalg.norm(msynth[amp > th] - mtutor[amp > th]) / np.sum(amp > th) * len(amp)
+    """
+    amp = bsa.song_amplitude(synth_song, bsa.FREQ_RANGE, bsa.FFT_STEP, bsa.FFT_SIZE)
+    if t_amp is not None:
+        amp = bsa.rescaling_one_feature(t_amp, amp)
+
     sort_amp = np.sort(amp)
     sort_amp = sort_amp[len(sort_amp)//10:]
     i_max_diff = np.argmax(_running_mean(np.diff(sort_amp), 100))
-    threshold = sort_amp[i_max_diff]
-    
-    msynth = bsa_measure(synth_song, 44100, coefs=p_coefs,
-                         tutor_feat=tutor_feat)
-    mtutor = bsa_measure(tutor_song, 44100, coefs=p_coefs,
-                         tutor_feat=tutor_feat)
-    
-    score = np.linalg.norm(msynth[amp > threshold] - mtutor[amp > threshold]) / np.sum(amp > threshold) * len(amp)
-    
-    return score
+    th = sort_amp[i_max_diff]
+
+    return amp, th
+
+
+def err_per_feat(mtutor, msong):
+    """
+    mtutor and msong are results from bsa_measure().
+    """
+    err_feats = np.zeros(mtutor.shape[1])
+    for i in range(mtutor.shape[1]):
+        err_feats[i] = np.sum(np.absolute(mtutor[:,i] - msong[:,i])**2)
+    return err_feats
 
 
 def draw_learning_curve(rd, ax=None):
@@ -146,7 +175,7 @@ class GridAnalyser:
 
     def audio(self, irun, iday, ismodel):
         a = Audio(self.rd[irun]['songs'].iloc[iday][ismodel].gen_sound(),
-                  rate=44100)
+                  rate=bsa.SR)
         return widgets.HTML(a._repr_html_())
 
     def tutor_audio(self, i):
@@ -161,10 +190,10 @@ class GridAnalyser:
         song = sm.gen_sound()
         fig = plt.figure(figsize=self.figsize)
         ax = fig.gca()
-        ax = bsa.spectral_derivs_plot(bsa.spectral_derivs(song, 256, 40, 1024),
+        ax = bsa.spectral_derivs_plot(bsa.spectral_derivs(song, bsa.FREQ_RANGE, bsa.SR, bsa.FFT_SIZE),
                                       contrast=0.01, ax=ax)
         for start, param in sm.gestures:
-            ax.axvline(start//40, color="black", linewidth=1, alpha=0.1)
+            ax.axvline(start//bsa.SR, color="black", linewidth=1, alpha=0.1)
         #ax.set_title('Spectrogram of model {} on day {} (run {})'.format(
         #    ismodel, iday, irun)
         #)
@@ -180,12 +209,12 @@ class GridAnalyser:
         sr, tutor = wavfile.read(join(self.run_paths[i], 'tutor.wav'))
         fig = plt.figure(figsize=self.figsize)
         ax = fig.gca()
-        bsa.spectral_derivs_plot(bsa.spectral_derivs(tutor, 256, 40, 1024),
+        bsa.spectral_derivs_plot(bsa.spectral_derivs(tutor, bsa.FREQ_RANGE, bsa.SR, bsa.FFT_SIZE),
                                  contrast=0.01, ax=ax)
         gtes = np.loadtxt('../data/{}_gte.dat'.format(
             basename(self.conf[i]['tutor']).split('.')[0]))
         for start in gtes:
-            ax.axvline(start//40, color="black", linewidth=1, alpha=0.1)
+            ax.axvline(start//bsa.SR, color="black", linewidth=1, alpha=0.1)
         ax.set_yticks([])
         ax.set_xticks([])
         ax.set_title("Tutor song spectral derivative")
@@ -225,10 +254,10 @@ class GridAnalyser:
             sr, tutor = wavfile.read(join(self.run_paths[i], 'tutor.wav'))
             if rescaling:
                 tutor = normalize_and_center(tutor)
-                tutor_feat = bsa.all_song_features(tutor, 44100,
-                                                   freq_range=256,
-                                                   fft_step=40,
-                                                   fft_size=1024)
+                tutor_feat = bsa.all_song_features(tutor, bsa.SR,
+                                                   freq_range=bsa.FREQ_RANGE,
+                                                   fft_step=bsa.FFT_STEP,
+                                                   fft_size=bsa.FFT_SIZE)
             score = boari_synth_song_error(tutor,
                                            synth,
                                            self.conf[i]['coefs'],
@@ -262,15 +291,15 @@ class GridAnalyser:
         sm = self.rd[irun]['songs'].iloc[iday][ismodel]
         durations = []
         for i in range(len(sm.gestures) - 1):
-            durations.append((sm.gestures[i+1][0] - sm.gestures[i][0]) /44100 * 1000)
-        durations.append((len(sm.song) - sm.gestures[-1][0]) / 44100 * 1000)
+            durations.append((sm.gestures[i+1][0] - sm.gestures[i][0]) /bsa.SR * 1000)
+        durations.append((len(sm.song) - sm.gestures[-1][0]) / bsa.SR * 1000)
 
         gtes = np.loadtxt('../data/{}_gte.dat'.format(
             basename(self.conf[irun]['tutor']).split('.')[0]))
         tdurations = []
         for i in range(len(gtes) - 1):
-            tdurations.append((gtes[i+1] - gtes[i]) / 44100 * 1000)
-        tdurations.append((len(sm.song) - gtes[-1]) / 44100 * 1000)
+            tdurations.append((gtes[i+1] - gtes[i]) / bsa.SR * 1000)
+        tdurations.append((len(sm.song) - gtes[-1]) / bsa.SR * 1000)
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(13, 6), sharex=True)
         ax1 = sns.distplot(durations, ax=ax1, kde=False)
         ax1.set_title("Distribution des durées de gestes identifiés par notre modèle ({} gestes)".format(len(sm.gestures)))
@@ -294,12 +323,12 @@ class GridAnalyser:
             basename(self.conf[i]['tutor']).split('.')[0]))
         fig = plt.figure(figsize=self.figsize)
         ax = fig.gca()
-        bsa.spectral_derivs_plot(bsa.spectral_derivs(synth, 256, 40, 1024),
+        bsa.spectral_derivs_plot(bsa.spectral_derivs(synth, bsa.FREQ_RANGE, bsa.FFT_STEP, bsa.FFT_SIZE),
                                  contrast=0.01, ax=ax)
         gtes = np.loadtxt('../data/{}_gte.dat'.format(
             basename(self.conf[i]['tutor']).split('.')[0]))
         for start in gtes:
-            ax.axvline(start//40, color="black", linewidth=1, alpha=0.1)
+            ax.axvline(start//bsa.SR, color="black", linewidth=1, alpha=0.1)
         ax.set_yticks([])
         ax.set_xticks([])
         ax.set_title("Boari's synth spectral derivative")

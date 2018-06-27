@@ -7,6 +7,7 @@ beta given.
 
 import numpy as np
 import birdsynth
+import birdsonganalysis as bsa
 
 
 def exp_sin(x, p, nb_exp=2, nb_sin=2):
@@ -99,7 +100,7 @@ def gen_alphabeta(params, length, falpha, fbeta,
         padding = 0
     # + 2 padding is necessary with ba synth.
     # Add a float to all the values of the numpy ndarray
-    t = beg / 44100 + np.linspace(0, (length+2)/44100, length + padding)
+    t = beg / bsa.SR + np.linspace(0, (length+2)/bsa.SR, length + padding)
     alpha_beta = np.stack(
         (
             falpha(t, params[:falpha_nb_args]),

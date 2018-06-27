@@ -17,7 +17,7 @@ import sys
 import warnings
 
 import birdsonganalysis as bsa
-from utils import _running_mean, draw_learning_curve, boari_synth_song_error
+import utils
 
 sys.path.append('../model/')
 from measures import bsa_measure, normalize_and_center
@@ -49,40 +49,37 @@ def get_rd_best_smodel_and_score(songlog):
 
 def get_features(song, param_feat):
     song_feat = bsa.all_song_features(song,
-                                      44100,
-                                      freq_range=256,
-                                      fft_step=40,
-                                      fft_size=1024)
+                                      bsa.SR,
+                                      freq_range=bsa.FREQ_RANGE,
+                                      fft_step=bsa.FFT_STEP,
+                                      fft_size=bsa.FFT_SIZE)
     return bsa.rescaling_with_tutor_values(param_feat, song_feat)
-
-def carac_to_calculate_err_of_synth(tutor_song, synth_song):
-    amp = bsa.song_amplitude(synth_song, 256, 40, 1024)
-    sort_amp = np.sort(amp)
-    sort_amp = sort_amp[len(sort_amp)//10:]
-    i_max_diff = np.argmax(_running_mean(np.diff(sort_amp), 100))
-    threshold = sort_amp[i_max_diff]
-    
-    return amp, threshold
-
-def err_per_feat(mtutor, msong):
-    err_feats = np.zeros(mtutor.shape[1])
-    for i in range(mtutor.shape[1]):
-        err_feats[i] = np.sum(np.absolute(mtutor[:,i] - msong[:,i])**2)
-    return err_feats
 
 def generate_data_struct(l_path):
     sim = []
     for path in l_path:
         d = {}
-        sr, d["tutor"] = wavfile.read(join(path, 'tutor.wav'))
-        d["tspec"] = bsa.spectral_derivs(d["tutor"], 256, 40, 1024)
+        d["fft_step"] = bsa.FFT_STEP
+        d["freq_range"] = bsa.FREQ_RANGE
+        d["fft_size"] = bsa.FFT_SIZE
+        d["sr"], d["tutor"] = wavfile.read(join(path, 'tutor.wav'))
+        d["tspec"] = bsa.spectral_derivs(d["tutor"],
+                                         d["freq_range"],
+                                         d["fft_step"],
+                                         d["fft_size"])
         d["run_param"], d["songlog"] = get_run_param_and_songlog(path)
         rd, smodel, score = get_rd_best_smodel_and_score(d["songlog"])
         d["rd"] = rd
         d["smodel"] = smodel
         d["score"] = score
         d["song"] = smodel.gen_sound()
-        d["smspec"] = bsa.spectral_derivs(d["song"], 256, 40, 1024)
+        d["starts"] = []
+        for i, gesture in enumerate(d["smodel"].gestures):
+            d["starts"].append(gesture[0])
+        d["smspec"] = bsa.spectral_derivs(d["song"],
+                                          d["freq_range"],
+                                          d["fft_step"],
+                                          d["fft_size"])
         song_name = basename(d["run_param"]['tutor']).split('.')[0]
         synth_ab = np.loadtxt('../data/{}_ab.dat'.format(song_name))
         d["ab"] = d["smodel"].gen_alphabeta()
@@ -90,34 +87,40 @@ def generate_data_struct(l_path):
             d["ab"][start] = np.nan
         d["synth_ab"] = synth_ab
         nct = normalize_and_center(d["tutor"])
-        param_feat= bsa.all_song_features(nct, 44100,
-                                          freq_range=256,
-                                          fft_step=40,
-                                          fft_size=1024)
+        param_feat= bsa.all_song_features(nct, d["sr"],
+                                          freq_range=d["freq_range"],
+                                          fft_step=d["fft_step"],
+                                          fft_size=d["fft_size"])
         d["tfeat"] = get_features(d["tutor"], param_feat)
         d["smfeat"] = get_features(d["song"], param_feat)
         tmp = '../data/{}_out.wav'
         sr, d["synth"] = wavfile.read(tmp.format(song_name))
-        d["Boari_score"] = boari_synth_song_error(d["tutor"],
+        d["Boari_score"] = utils.boari_synth_song_error(d["tutor"],
                                        d["synth"],
                                        d["run_param"]['coefs'],
                                        tutor_feat=param_feat)
-        d["mtutor"] = bsa_measure(d["tutor"], 44100,
+        d["mtutor"] = bsa_measure(d["tutor"], d["sr"],
                              coefs=d["run_param"]['coefs'],
                              tutor_feat=param_feat)
-        d["msynth"] = bsa_measure(d["synth"], 44100,
+        d["msynth"] = bsa_measure(d["synth"], d["sr"],
                              coefs=d["run_param"]['coefs'],
                              tutor_feat=param_feat)
-        d["msong"] = bsa_measure(d["song"], 44100,
+        d["msong"] = bsa_measure(d["song"], d["sr"],
                             coefs=d["run_param"]['coefs'],
                             tutor_feat=param_feat)
         sim.append(d)
     return sim
 
+def plot_gesture_starts(starts, scale=1):
+    for start in starts:
+        plt.axvline(start / scale, color="k", linewidth=1, alpha=0.2)
+
 def plot_fig(sim, sims, titles):
     fnames = ["fm", "am", "entropy", "goodness", "amplitude"]
     nb_row = 8 + len(fnames)
     nb_col = len(sim)
+    color_synth = "chocolate"
+    color_song = "seagreen"
     
     plt.figure(figsize=(16, nb_row * 5))
     for i in range(nb_col):
@@ -130,6 +133,7 @@ def plot_fig(sim, sims, titles):
         
         plt.subplot(nb_row, nb_col, pos)
         plt.plot(sim[i]["smodel"].gen_sound())
+        plot_gesture_starts(sim[i]["starts"])
         plt.title("Song model sound")
         pos += nb_col
     
@@ -140,12 +144,13 @@ def plot_fig(sim, sims, titles):
         
         ax = plt.subplot(nb_row, nb_col, pos)
         bsa.spectral_derivs_plot(sim[i]["smspec"], contrast=0.01, ax=ax)
+        plot_gesture_starts(sim[i]["starts"], scale=sim[i]["fft_step"])
         ax.set_title("Song spectral derivative")
         pos += nb_col
     
         ax = plt.subplot(nb_row, nb_col, pos)
-        ax = draw_learning_curve(sim[i]["rd"], ax=ax)
-        ax.axhline(y=sim[i]["Boari_score"], color='orange',
+        ax = utils.draw_learning_curve(sim[i]["rd"], ax=ax)
+        ax.axhline(y=sim[i]["Boari_score"], color=color_synth,
                       linestyle='-', label="Boari's error")
         ax.legend()
         pos += nb_col
@@ -154,13 +159,15 @@ def plot_fig(sim, sims, titles):
             plt.subplot(nb_row, nb_col, pos)
             plt.plot(sim[i]["tfeat"][fname], label="tutor")
             plt.plot(sim[i]["smfeat"][fname], label="song")
+            plot_gesture_starts(sim[i]["starts"], scale=sim[i]["fft_step"])
             plt.legend()
             plt.title(fname)
             pos += nb_col
             
         plt.subplot(nb_row, nb_col, pos)
-        plt.plot(sim[i]["synth_ab"][:, 1], label="synth")
-        plt.plot(sim[i]["ab"][:, 1], label="song")
+        plt.plot(sim[i]["synth_ab"][:, 1], label="synth",color=color_synth)
+        plt.plot(sim[i]["ab"][:, 1], label="song", color=color_song)
+        plot_gesture_starts(sim[i]["starts"])
         plt.legend()
         plt.title("Beta")
         pos += nb_col
@@ -176,29 +183,28 @@ def plot_fig(sim, sims, titles):
         a_sm = num / denum
         
         plt.subplot(nb_row, nb_col, pos)
-        plt.plot(a_synth, alpha=0.7, label="synth")
-        plt.plot(a_sm, label="song")
+        plt.plot(a_synth, alpha=0.7, label="synth", color=color_synth)
+        plt.plot(a_sm, label="song", color=color_song)
+        plot_gesture_starts(sim[i]["starts"])
         plt.legend()
         plt.title("Alpha")
         pos += nb_col
         
         # Calculation of each feature error
-        amp, th = carac_to_calculate_err_of_synth(sim[i]["tutor"],
-                                                  sim[i]["synth"])
-        err_feat_vect = err_per_feat(sim[i]["mtutor"],
-                                     sim[i]["msong"])
-        err_feat_vect_synth = err_per_feat(sim[i]["mtutor"][amp > th],
-                                           sim[i]["msynth"][amp > th])
+        amp, th = utils.carac_to_calculate_err_of_synth(sim[i]["synth"])
+        err_feat_vect = utils.err_per_feat(sim[i]["mtutor"],
+                                           sim[i]["msong"])
+        err_feat_vect_synth = utils.err_per_feat(sim[i]["mtutor"][amp > th],
+                                                 sim[i]["msynth"][amp > th])
         
         x = np.arange(1,len(err_feat_vect))
         plt.subplot(nb_row, nb_col, pos)
         plt.bar(x - 0.1, err_feat_vect_synth[:-1],
-                width=0.2, align='center')
+                width=0.2, align='center', label="synth", color=color_synth)
         plt.bar(x + 0.1, err_feat_vect[:-1],
-                width=0.2, align='center')
+                width=0.2, align='center', label="song", color=color_song)
         plt.xticks(x, fnames)
+        plt.legend()
 
     plt.show()
-    
-    return err_feat_vect_synth, err_feat_vect
     

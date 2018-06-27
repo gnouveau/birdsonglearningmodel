@@ -14,6 +14,7 @@ import sys
 sys.path.append('../model')
 
 from song_model import SongModel  # noqa
+import birdsonganalysis as bsa
 
 
 sns.set_palette('colorblind')
@@ -58,8 +59,8 @@ def extract_syllables_feature(song, threshold=None, normalize=False):
     all_syllables_features : extract all syllable statistics from a population
         of songs.
     """
-    sfeat = bsa.all_song_features(song, 44100, freq_range=256,
-                                  fft_size=1024, fft_step=40)
+    sfeat = bsa.all_song_features(song, bsa.SR, freq_range=bsa.FREQ_RANGE,
+                                  fft_size=bsa.FFT_SIZE, fft_step=bsa.FFT_STEP)
     if normalize:
         sfeat = bsa.normalize_features(sfeat)
     if threshold is None:
