@@ -26,9 +26,9 @@ def get_confs(confdir):
     """Iterator over all combinations of the files in subfolders."""
     confs = []
     for folder in sorted(glob(join(confdir, "*"))):
-        confs.append([])
         if not isdir(folder):
             continue
+        confs.append([])
         for conf_file_name in sorted(glob(join(folder, '*.json'))):
             with open(conf_file_name) as conf_file:
                 try:
@@ -36,9 +36,7 @@ def get_confs(confdir):
                 except json.decoder.JSONDecodeError:
                     print('json.decoder.JSONDecodeError:', conf_file_name)
                     raise
-        
     for conf_prod in itertools.product(*confs):
-        
         tot_conf = dict()
         names = []
         for conf in conf_prod:
