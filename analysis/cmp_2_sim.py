@@ -191,20 +191,34 @@ def plot_fig(sim, sims, titles):
         pos += nb_col
         
         # Calculation of each feature error
-        amp, th = utils.carac_to_calculate_err_of_synth(sim[i]["synth"])
+        amp, th = utils.carac_to_calculate_err_of_synth(sim[i]["synth"],
+                                                        t_amp=sim[i]["tfeat"]["amplitude"])
         err_feat_vect = utils.err_per_feat(sim[i]["mtutor"],
                                            sim[i]["msong"])
         err_feat_vect_synth = utils.err_per_feat(sim[i]["mtutor"][amp > th],
                                                  sim[i]["msynth"][amp > th])
-        
-        x = np.arange(1,len(err_feat_vect))
-        plt.subplot(nb_row, nb_col, pos)
-        plt.bar(x - 0.1, err_feat_vect_synth[:-1],
-                width=0.2, align='center', label="synth", color=color_synth)
-        plt.bar(x + 0.1, err_feat_vect[:-1],
-                width=0.2, align='center', label="song", color=color_song)
+        x = np.arange(0,len(err_feat_vect))
+        ax = plt.subplot(nb_row, nb_col, pos)
+        synth_score = round(sim[i]["Boari_score"], 2)
+        song_score = round(sim[i]["score"], 2)
+        synth_label = "synth ({})".format(synth_score)
+        song_label = "song ({})".format(song_score)
+        plt.bar(x - 0.1, err_feat_vect_synth,
+                width=0.2, align='center', label=synth_label, color=color_synth)
+        plt.bar(x + 0.1, err_feat_vect,
+                width=0.2, align='center', label=song_label, color=color_song)
         plt.xticks(x, fnames)
+        shift = np.max(np.concatenate((err_feat_vect_synth, err_feat_vect))) / 100
+        for index in x:
+            v_synth = err_feat_vect_synth[index]
+            v_song = err_feat_vect[index]
+            ax.text(index - 0.1, v_synth + shift,
+                    str(round(v_synth, 2)),
+                    color=color_synth, ha="center", fontweight='bold')
+            ax.text(index + 0.1, v_song + shift,
+                    str(round(v_song, 2)),
+                    color=color_song, ha="center", fontweight='bold')
         plt.legend()
+        plt.title("Errors")
 
     plt.show()
-    

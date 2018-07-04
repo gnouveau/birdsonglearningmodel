@@ -30,43 +30,39 @@ def _running_mean(x, N):
     return y/N
 
 
-def boari_synth_song_error(tutor_song, synth_song, p_coefs, tutor_feat=None):
+def boari_synth_song_error(tutor_song, synth_song, p_coefs, tutor_feat):
     """Compute the error distance only on syllables.
     if tutor_feat=None: MAD normalization
     if tutor_feat is defined: rescaling of the features values
     """
-    if tutor_feat is not None:
-        t_amp = tutor_feat["amplitude"]
-    else:
-        t_amp = None
-
-    amp, th = carac_to_calculate_err_of_synth(synth_song, t_amp=t_amp)
-    
+    t_amp = tutor_feat["amplitude"]
+    amp, th = carac_to_calculate_err_of_synth(synth_song, t_amp)
     msynth = bsa_measure(synth_song, bsa.SR, coefs=p_coefs,
                          tutor_feat=tutor_feat)
     mtutor = bsa_measure(tutor_song, bsa.SR, coefs=p_coefs,
                          tutor_feat=tutor_feat)
-    
-    score = np.linalg.norm(msynth[amp > th] - mtutor[amp > th]) / np.sum(amp > th) * len(amp)
-    
-    return score
+    # Calculate the error difference only on the "sound" part
+    distance = np.linalg.norm(msynth[amp > th] - mtutor[amp > th])
+    # Average the error over all the signal ==> mean error for each sample
+    mean_score = distance / np.sum(amp > th) * len(amp)
+    return mean_score
 
 
-def carac_to_calculate_err_of_synth(synth_song, t_amp=None):
+def carac_to_calculate_err_of_synth(synth_song, t_amp):
     """
     calculation to do after carac_to_calculate_err_of_synth:
     err_per_feat_synth = err_per_feat(mtutor[amp > th], msynth[amp > th])
     score = np.linalg.norm(msynth[amp > th] - mtutor[amp > th]) / np.sum(amp > th) * len(amp)
     """
-    amp = bsa.song_amplitude(synth_song, bsa.FREQ_RANGE, bsa.FFT_STEP, bsa.FFT_SIZE)
-    if t_amp is not None:
-        amp = bsa.rescaling_one_feature(t_amp, amp)
-
+    amp = bsa.song_amplitude(synth_song,
+                             bsa.FREQ_RANGE,
+                             bsa.FFT_STEP,
+                             bsa.FFT_SIZE)
+    amp = bsa.rescaling_one_feature(t_amp, amp)
     sort_amp = np.sort(amp)
     sort_amp = sort_amp[len(sort_amp)//10:]
     i_max_diff = np.argmax(_running_mean(np.diff(sort_amp), 100))
     th = sort_amp[i_max_diff]
-
     return amp, th
 
 
@@ -91,6 +87,7 @@ def draw_learning_curve(rd, ax=None):
         plt.plot(scores)
     ax.set_xticks(range(0, len(rd['scores']), 20))
     ax.set_xticklabels(range(0, len(rd['scores'])//2, 10))
+    ax.set_xlim(0, len(rd['scores']))
     ax.set_ylabel('Error distance from tutor')
     ax.set_xlabel('Day')
     ax.set_title('Learning curve')
@@ -142,8 +139,7 @@ class GridAnalyser:
                     self.options_list[i].add(option)
                 except IndexError:
                     self.options_list.append(set([option]))
-
-
+        self.zoom = bsa.FFT_SIZE / bsa.FREQ_RANGE / 4
 
     def show(self, i, vbox, rescaling=False):
         """
@@ -164,8 +160,8 @@ class GridAnalyser:
                 self.spec_deriv_plot(i, 0, best), # initial spec deriv
                 self.spec_deriv_plot(i, mid_i, best), # spec deriv at the middle of the simulation
                 self.spec_deriv_plot(i, -1, best), # spec deriv at the last day
-                self.synth_spec(i),
-                self.tutor_spec_plot(i)
+                self.tutor_spec_plot(i),
+                self.synth_spec(i)
 #                self.gestures_hist(i, -1, best)
             ]
         except NoDataException:
@@ -190,16 +186,20 @@ class GridAnalyser:
         song = sm.gen_sound()
         fig = plt.figure(figsize=self.figsize)
         ax = fig.gca()
-        ax = bsa.spectral_derivs_plot(bsa.spectral_derivs(song, bsa.FREQ_RANGE, bsa.SR, bsa.FFT_SIZE),
+        ax = bsa.spectral_derivs_plot(bsa.spectral_derivs(song,
+                                                          bsa.FREQ_RANGE,
+                                                          bsa.FFT_STEP,
+                                                          bsa.FFT_SIZE),
                                       contrast=0.01, ax=ax)
         for start, param in sm.gestures:
-            ax.axvline(start//bsa.SR, color="black", linewidth=1, alpha=0.1)
-        #ax.set_title('Spectrogram of model {} on day {} (run {})'.format(
-        #    ismodel, iday, irun)
-        #)
+            ax.axvline(start//bsa.FFT_STEP,
+                       color="black",
+                       linewidth=1,
+                       alpha=0.1)
         ax.set_title(self.pretty_title(irun, iday))
         ax.set_yticks([])
         ax.set_xticks([])
+        ax.set_ylim(0, bsa.FREQ_RANGE * self.zoom)
         if self.save_fig:
             fig.savefig('{}_{}_{}.png'.format(irun, iday, ismodel), dpi=300)
         plt.close(fig)
@@ -209,32 +209,49 @@ class GridAnalyser:
         sr, tutor = wavfile.read(join(self.run_paths[i], 'tutor.wav'))
         fig = plt.figure(figsize=self.figsize)
         ax = fig.gca()
-        bsa.spectral_derivs_plot(bsa.spectral_derivs(tutor, bsa.FREQ_RANGE, bsa.SR, bsa.FFT_SIZE),
+        bsa.spectral_derivs_plot(bsa.spectral_derivs(tutor,
+                                                     bsa.FREQ_RANGE,
+                                                     bsa.FFT_STEP,
+                                                     bsa.FFT_SIZE),
                                  contrast=0.01, ax=ax)
         gtes = np.loadtxt('../data/{}_gte.dat'.format(
             basename(self.conf[i]['tutor']).split('.')[0]))
         for start in gtes:
-            ax.axvline(start//bsa.SR, color="black", linewidth=1, alpha=0.1)
+            ax.axvline(start//bsa.FFT_STEP,
+                       color="black",
+                       linewidth=1,
+                       alpha=0.1)
         ax.set_yticks([])
         ax.set_xticks([])
+        ax.set_ylim(0, bsa.FREQ_RANGE * self.zoom)
         ax.set_title("Tutor song spectral derivative")
         if self.save_fig:
             fig.savefig('tutor.png', dpi=300)
         plt.close(fig)
         return plot_to_html(fig)
 
-
-    def title(self, i):
-        return widgets.HTML('<h3>' + self.conf[i]['name'] + '</h3>')
-
-    def configuration(self, i):
-        table = widgets.HTML('<table>')
-        table.value += '<tr><th>Key</th><th>Value</th></tr>'
-        for key in self.conf[i]:
-            table.value += '<tr><td>{}</td><td>{}</td>'.format(key, self.conf[i][key])
-        table.value += '</table>'
-        return table
-
+    def synth_spec(self, i):
+        sr, synth = wavfile.read('../data/{}_out.wav'.format(
+            basename(self.conf[i]['tutor']).split('.')[0]))
+        fig = plt.figure(figsize=self.figsize)
+        ax = fig.gca()
+        bsa.spectral_derivs_plot(bsa.spectral_derivs(synth,
+                                                     bsa.FREQ_RANGE,
+                                                     bsa.FFT_STEP,
+                                                     bsa.FFT_SIZE),
+                                 contrast=0.01, ax=ax)
+        gtes = np.loadtxt('../data/{}_gte.dat'.format(
+            basename(self.conf[i]['tutor']).split('.')[0]))
+        for start in gtes:
+            ax.axvline(start//bsa.FFT_STEP, color="black", linewidth=1, alpha=0.1)
+        ax.set_yticks([])
+        ax.set_xticks([])
+        ax.set_ylim(0, bsa.FREQ_RANGE * self.zoom)
+        ax.set_title("Boari's synth spectral derivative")
+        if self.save_fig:
+            fig.savefig('synth.png', dpi=300)
+        plt.close(fig)
+        return plot_to_html(fig)
 
     def learning_curve(self, i, rescaling=False):
         """
@@ -272,7 +289,18 @@ class GridAnalyser:
             if self.save_fig:
                 fig.savefig('learning_curve_{}.png'.format(i), dpi=300)
             plt.close(fig)
-        return plot_to_html(fig)        
+        return plot_to_html(fig)
+        
+    def title(self, i):
+        return widgets.HTML('<p>' + self.conf[i]['name'] + '</p>')
+
+    def configuration(self, i):
+        table = widgets.HTML('<table>')
+        table.value += '<tr><th>Key</th><th>Value</th></tr>'
+        for key in self.conf[i]:
+            table.value += '<tr><td>{}</td><td>{}</td>'.format(key, self.conf[i][key])
+        table.value += '</table>'
+        return table
 
     def _get_data(self, i):
         try:
@@ -317,25 +345,6 @@ class GridAnalyser:
         with open(join(self.run_paths[i], 'conf.json')) as f:
             conf = json.load(f)
         return conf
-
-    def synth_spec(self, i):
-        sr, synth = wavfile.read('../data/{}_out.wav'.format(
-            basename(self.conf[i]['tutor']).split('.')[0]))
-        fig = plt.figure(figsize=self.figsize)
-        ax = fig.gca()
-        bsa.spectral_derivs_plot(bsa.spectral_derivs(synth, bsa.FREQ_RANGE, bsa.FFT_STEP, bsa.FFT_SIZE),
-                                 contrast=0.01, ax=ax)
-        gtes = np.loadtxt('../data/{}_gte.dat'.format(
-            basename(self.conf[i]['tutor']).split('.')[0]))
-        for start in gtes:
-            ax.axvline(start//bsa.SR, color="black", linewidth=1, alpha=0.1)
-        ax.set_yticks([])
-        ax.set_xticks([])
-        ax.set_title("Boari's synth spectral derivative")
-        if self.save_fig:
-            fig.savefig('synth.png', dpi=300)
-        plt.close(fig)
-        return plot_to_html(fig)
 
     def pretty_title(self, irun, iday):
         """return the moment of the simulation relative to the index"""

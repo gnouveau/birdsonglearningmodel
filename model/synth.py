@@ -107,8 +107,9 @@ def gen_alphabeta(params, length, falpha, fbeta,
             fbeta(t, params[falpha_nb_args:])
         ), axis=-1)
         
-    # TODO: pkoi on ne s'autorise pas les alpha negatifs ?
     alpha_beta[:, 0] = np.where(alpha_beta[:, 0] < 0, 0, alpha_beta[:, 0])
+    # TODO: Try beta with only negative values
+    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > 0, 0, alpha_beta[:, 1])
     
     return alpha_beta
 
