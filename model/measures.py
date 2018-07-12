@@ -13,10 +13,10 @@ def _running_mean(x, N):
 def bsa_measure(sig, sr, coefs=None, tutor_feat=None):
     """Measure the song or song part with standard birdsong analysis."""
     out = []
-    fnames = ['fm', 'am', 'entropy', 'goodness', 'amplitude', 'pitch']
+    fnames = ['fm', 'am', 'entropy', 'goodness', 'amplitude', 'pitch', 'rms']
     if coefs is None:
         coefs = {'fm': 1, 'am': 1, 'entropy': 1, 'goodness': 1,
-                 'amplitude': 1, 'pitch': 1}
+                 'amplitude': 1, 'pitch': 1, 'rms': 1}
     s_feat = bsa.all_song_features(sig, sr, 
                                    freq_range=bsa.FREQ_RANGE, 
                                    fft_step=bsa.FFT_STEP,
