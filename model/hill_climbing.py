@@ -119,6 +119,7 @@ def stochastic_hill_climbing(function, goal, guess, guess_deviation=0.01,
     init_score = best_score
     i = 0
     while comparison_method(goal, best_res) > goal_delta and i < max_iter:
+        # guess_deviation is a covariance matrix. Its diagonal has the variance values
         cur_guess = rng.multivariate_normal(best_guess, guess_deviation)
         np.clip(cur_guess, guess_min, guess_max, out=cur_guess)
         cur_res = function(cur_guess)

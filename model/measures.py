@@ -68,6 +68,7 @@ def genetic_neighbours(songs, all_songs, threshold=2000):
         own = [gesture[0] for gesture in refsong.gestures]
         for isong, othersong in enumerate(all_songs):
             if othersong is refsong:
+                nb_close += 1
                 continue
             song_dist = 0
             other = [gesture[0] for gesture in othersong.gestures]

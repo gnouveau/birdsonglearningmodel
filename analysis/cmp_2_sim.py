@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jun 21 16:48:08 2018
-
-@author: gnouveau
-"""
-
 import json
 import matplotlib.pyplot as plt
 import numpy as np
@@ -116,11 +108,13 @@ def plot_gesture_starts(starts, scale=1):
         plt.axvline(start / scale, color="k", linewidth=1, alpha=0.2)
 
 def plot_fig(sim, sims, titles):
-    fnames = ["fm", "am", "entropy", "goodness", "amplitude"]
+    fnames = ["fm", "am", "entropy", "goodness", "amplitude", "pitch", "rms"]
+#    fnames = ["fm", "am", "entropy", "goodness", "amplitude", "pitch"]
     nb_row = 8 + len(fnames)
     nb_col = len(sim)
-    color_synth = "chocolate"
-    color_song = "seagreen"
+    color_song = "C1"
+    color_synth = "C2"
+    zoom = bsa.FFT_SIZE / bsa.FREQ_RANGE / 4
     
     plt.figure(figsize=(16, nb_row * 5))
     for i in range(nb_col):
@@ -128,29 +122,33 @@ def plot_fig(sim, sims, titles):
         
         plt.subplot(nb_row, nb_col, pos)
         plt.plot(sim[i]["tutor"])
+        plt.xlim(0, len(sim[i]["tutor"]))
         plt.title(sims[i]+"\n"+titles[i]+"\n\n"+"Tutor sound")
         pos += nb_col
         
         plt.subplot(nb_row, nb_col, pos)
-        plt.plot(sim[i]["smodel"].gen_sound())
+        plt.plot(sim[i]["song"])
         plot_gesture_starts(sim[i]["starts"])
+        plt.xlim(0, len(sim[i]["song"]))
         plt.title("Song model sound")
         pos += nb_col
     
         ax = plt.subplot(nb_row, nb_col, pos)
         bsa.spectral_derivs_plot(sim[i]["tspec"], contrast=0.01, ax=ax)
+        ax.set_ylim(0, bsa.FREQ_RANGE * zoom)
         ax.set_title("Tutor spectral derivative")
         pos += nb_col
         
         ax = plt.subplot(nb_row, nb_col, pos)
         bsa.spectral_derivs_plot(sim[i]["smspec"], contrast=0.01, ax=ax)
+        ax.set_ylim(0, bsa.FREQ_RANGE * zoom)
         plot_gesture_starts(sim[i]["starts"], scale=sim[i]["fft_step"])
         ax.set_title("Song spectral derivative")
         pos += nb_col
     
         ax = plt.subplot(nb_row, nb_col, pos)
         ax = utils.draw_learning_curve(sim[i]["rd"], ax=ax)
-        ax.axhline(y=sim[i]["Boari_score"], color=color_synth,
+        ax.axhline(y=sim[i]["Boari_score"], color="C3",
                       linestyle='-', label="Boari's error")
         ax.legend()
         pos += nb_col
@@ -160,6 +158,7 @@ def plot_fig(sim, sims, titles):
             plt.plot(sim[i]["tfeat"][fname], label="tutor")
             plt.plot(sim[i]["smfeat"][fname], label="song")
             plot_gesture_starts(sim[i]["starts"], scale=sim[i]["fft_step"])
+            plt.xlim(0,len(sim[i]["tfeat"][fname]))
             plt.legend()
             plt.title(fname)
             pos += nb_col
@@ -168,6 +167,7 @@ def plot_fig(sim, sims, titles):
         plt.plot(sim[i]["synth_ab"][:, 1], label="synth",color=color_synth)
         plt.plot(sim[i]["ab"][:, 1], label="song", color=color_song)
         plot_gesture_starts(sim[i]["starts"])
+        plt.xlim(0,len(sim[i]["ab"][:, 1]))
         plt.legend()
         plt.title("Beta")
         pos += nb_col
@@ -181,13 +181,15 @@ def plot_fig(sim, sims, titles):
         num = sim[i]["ab"][:,0] - np.nanmin(sim[i]["ab"][:,0])
         denum = np.nanmax(sim[i]["ab"][:,0]) - np.nanmin(sim[i]["ab"][:,0])
         a_sm = num / denum
-        
-        plt.subplot(nb_row, nb_col, pos)
-        plt.plot(a_synth, alpha=0.7, label="synth", color=color_synth)
-        plt.plot(a_sm, label="song", color=color_song)
+
+        # Inversion of the plot order for better readability
+        ax = plt.subplot(nb_row, nb_col, pos)
+        line1, = plt.plot(a_sm, label="song", color=color_song)
+        line2, = plt.plot(a_synth, label="synth", color=color_synth)
         plot_gesture_starts(sim[i]["starts"])
-        plt.legend()
-        plt.title("Alpha")
+        plt.xlim(0, len(a_sm))
+        ax.legend((line2, line1), ("synth", "song"))
+        plt.title("Alpha (normalized)")
         pos += nb_col
         
         # Calculation of each feature error

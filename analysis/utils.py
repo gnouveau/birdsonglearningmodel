@@ -161,13 +161,17 @@ class GridAnalyser:
                 self.spec_deriv_plot(i, mid_i, best), # spec deriv at the middle of the simulation
                 self.spec_deriv_plot(i, -1, best), # spec deriv at the last day
                 self.tutor_spec_plot(i),
-                self.synth_spec(i)
+                self.synth_spec(i),
+                self.song_model_sound_wave(i, -1, best),
+                self.tutor_sound_wave(i)
 #                self.gestures_hist(i, -1, best)
             ]
         except NoDataException:
             vbox.children = [
                 widgets.HTML('<p>No data yet</p>')
             ]
+        # save the learned song in a .wav file
+#        self.save_audio(i, -1, best)
 
     def audio(self, irun, iday, ismodel):
         a = Audio(self.rd[irun]['songs'].iloc[iday][ismodel].gen_sound(),
@@ -177,6 +181,36 @@ class GridAnalyser:
     def tutor_audio(self, i):
         a = Audio(join(self.run_paths[i], 'tutor.wav'))
         return widgets.HTML(a._repr_html_())
+
+    def save_audio(self, irun, iday, ismodel):
+        sm = self.rd[irun]['songs'].iloc[iday][ismodel]
+        soundwave = sm.gen_sound()
+        # normalize to get the sound louder
+        wav_song = normalize_and_center(soundwave)
+        wavfile.write(filename="{}_song.wav".format(self.conf[irun]['name']),
+                      rate=bsa.SR,data=wav_song)
+
+    def song_model_sound_wave(self, irun, iday, ismodel):
+        sm = self.rd[irun]['songs'].iloc[iday][ismodel]
+        soundwave = sm.gen_sound()
+        fig = plt.figure(figsize=self.figsize)
+        ax = fig.gca()
+        ax.plot(soundwave, color='C1')
+        ax.set_xlim(0, len(soundwave))
+        ax.set_title("song model sound wave")
+        plt.close(fig)
+        return plot_to_html(fig)
+
+    def tutor_sound_wave(self, irun):
+        sr, tutor = wavfile.read(join(self.run_paths[irun], 'tutor.wav'))
+        tutor = normalize_and_center(tutor)
+        fig = plt.figure(figsize=self.figsize)
+        ax = fig.gca()
+        ax.plot(tutor, color='C0')
+        ax.set_xlim(0, len(tutor))
+        ax.set_title("tutor sound wave (normalized)")
+        plt.close(fig)
+        return plot_to_html(fig)
 
     def spec_deriv_plot(self, irun, iday, ismodel):
         try:
