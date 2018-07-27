@@ -109,7 +109,6 @@ def plot_gesture_starts(starts, scale=1):
 
 def plot_fig(sim, sims, titles):
     fnames = ["fm", "am", "entropy", "goodness", "amplitude", "pitch", "rms"]
-#    fnames = ["fm", "am", "entropy", "goodness", "amplitude", "pitch"]
     nb_row = 8 + len(fnames)
     nb_col = len(sim)
     color_song = "C1"
