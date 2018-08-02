@@ -83,7 +83,7 @@ class SongModel:
                 except IndexError:  # Perhaps we have picked the last gesture
                     max_pos = len(self.song) - 100
                 cur_pos = gestures[to_move][0]
-                if to_move < min_pos or max_pos < to_move:  # not enough space
+                if cur_pos < min_pos or max_pos < cur_pos:  # not enough space
                     logger.error('to_move < min_pos or max_pos < to_move')
                 else:
                     new_pos = self.rng.triangular(min_pos, cur_pos, max_pos)  # triangular distribution

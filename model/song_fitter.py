@@ -260,7 +260,7 @@ def main():
                         default='confs/default_coefs.json',
                         help="file with the coefs")
     parser.add_argument('--priors', type=ap.FileType('r'),
-                        default="confs/default_prior_max_min_dev.json")
+                        default="confs/default_prior_dev.json")
     # if --no-desc appears in the command-line, it gets False, else it's True
     parser.add_argument('--no-desc', dest='edit_desc', action='store_false')
     args = parser.parse_args()
@@ -314,11 +314,10 @@ def main():
     path = 'res/{}'.format(run_name)
     os.makedirs(path)
     wavfile.write(os.path.join(path, 'tutor.wav'), sr, tsong)
-    # pmmd means: prior, min, max, deviation
-    pmmd = json.load(args.priors)
+    prior_dev = json.load(args.priors)
     
     # update values, if they were not already defined in the config file
-    for key, value in pmmd.items():
+    for key, value in prior_dev.items():
         if key not in conf:
             conf[key] = value
             
