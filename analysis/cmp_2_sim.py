@@ -103,9 +103,9 @@ def generate_data_struct(l_path):
         sim.append(d)
     return sim
 
-def plot_gesture_starts(starts, scale=1):
+def plot_gesture_starts(starts, scale=1, color="k"):
     for start in starts:
-        plt.axvline(start / scale, color="k", linewidth=1, alpha=0.2)
+        plt.axvline(start / scale, color=color, linewidth=1, alpha=0.2)
 
 def plot_fig(sim, sims, titles):
     fnames = ["fm", "am", "entropy", "goodness", "amplitude", "pitch", "rms"]

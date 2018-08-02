@@ -122,9 +122,9 @@ def mutate_microbial_diversity(songs, goal, cur_day, nb_day,
     threshold = conf.get('diversity_threshold', 2000)
 #    bloat_weight = conf.get('bloat_weight', 0)
     diversity_weight = conf.get('diversity_weight', 1)
-    diversity_decay = conf.get('decay', None)
-    if diversity_decay == 'linear':
-        diversity_weight = diversity_weight * (1 - (cur_day / (nb_day - 1)))
+#    diversity_decay = conf.get('decay', None)
+#    if diversity_decay == 'linear':
+#        diversity_weight = diversity_weight * (1 - (cur_day / (nb_day - 1)))
     for i in range(nb_replay):
         picked_songs = rng.choice(len(songs), size=2, replace=False)
         scores = get_scores(goal, songs[picked_songs], measure, comp)

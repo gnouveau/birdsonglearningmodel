@@ -26,7 +26,6 @@ def only_sin(x, p, nb_sin=3):
                    * np.sin(next(ip) + (2*np.pi * x) * next(ip))
                    for i in range(nb_sin)] + [next(ip)], axis=0)
 
-
 def exp_sin_str(p, nb_exp=2, nb_sin=2, x='x'):
     """Return string representation of `exp_sin`."""
     ip = np.nditer(p)
@@ -84,7 +83,7 @@ def gen_alphabeta(params, length, falpha, fbeta,
                 np.array[t]
     falpha_nb_args - Number of params falpha needs. It will be used for
                      the slicing of `params`. Indeed, in the code, we do
-    pad - Should we add the padding to correct the csynth bug or not #TODO: quel bug ?
+    pad - Should we add the padding to correct the csynth bug or not
 
     ```
     falpha(t, params[:falpha_nb_args])
@@ -94,13 +93,12 @@ def gen_alphabeta(params, length, falpha, fbeta,
     Returns - A 2D numpy.array of shape (length, 2) with in the first column
     the alpha parameters and in the second the beta parameters.
     """
-    if pad: # TODO: demander c'est quoi ce padding ?
-        padding = 2
-    else:
-        padding = 0
-    # + 2 padding is necessary with ba synth.
-    # Add a float to all the values of the numpy ndarray
-    t = beg / bsa.SR + np.linspace(0, (length+2)/bsa.SR, length + padding)
+    t = beg / bsa.SR + np.linspace(0, length/bsa.SR, length)
+    
+    if pad == 'last' or pad is True:
+        pad_t = np.array([length+1, length+2]) / bsa.SR
+        t = np.concatenate((t, pad_t))
+        
     alpha_beta = np.stack(
         (
             falpha(t, params[:falpha_nb_args]),
@@ -108,9 +106,8 @@ def gen_alphabeta(params, length, falpha, fbeta,
         ), axis=-1)
         
     alpha_beta[:, 0] = np.where(alpha_beta[:, 0] < 0, 0, alpha_beta[:, 0])
-    # TODO: Try beta with only negative values
+    # Force Beta to only have negative values
     alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > 0, 0, alpha_beta[:, 1])
-    
     return alpha_beta
 
 
