@@ -50,7 +50,7 @@ class SongModel:
         self.gestures = deepcopy(gestures)
         # Do not keep track of parent for now, avoid blow up in copy
         self.parent = None
-    
+
     def mutate(self, n=1):
         """Give a new song model with new GTEs.
         n: number of mutations
@@ -72,7 +72,7 @@ class SongModel:
                 except ValueError:  # There is no new place
                     continue
                 logger.info('split')
-                new_gesture = self.shift_gesture(gestures[add_after], add_at)                
+                new_gesture = self.shift_gesture(gestures[add_after], add_at)
                 gestures.insert(add_after + 1, new_gesture)
             elif act <= 0.75:  # change the gesture's start
                 logger.info('moved')
@@ -177,7 +177,7 @@ class SongModel:
         except IndexError:
             end = len(self.song)
         return end
-    
+
     def shift_gesture(self, gesture, new_start):
         """Time shift the start of the gesture.
         Generate alpha beta parameters so that the new gesture shifted
@@ -201,7 +201,7 @@ class SongModel:
         ab_param[14] = g[13] * t + g[14]
         # new phase
         ab_param[15] = g[15] + 2 * np.pi * t * g[16]
-        
+
         return [new_start, ab_param]
 
     def mutate_test(self, n=1, to_move=None, new_pos=None):
@@ -214,7 +214,6 @@ class SongModel:
         """
         gestures = deepcopy(self.gestures)
         for i in range(n):
-            
             logger.info('moved')
             if to_move is None:
                 to_move = self.rng.randint(1, len(gestures))
@@ -248,7 +247,6 @@ class SongModel:
                 else:
                     print("euuuh... ne dois jamais arriver")
                 gestures[to_move] = self.shift_gesture(gestures[to_move], new_pos)
-            
             # clean GTEs
             gestures.sort(key=lambda x: x[0])
             clean = False
@@ -263,5 +261,4 @@ class SongModel:
                     clean = True
             if len(self.song) - gestures[-1][0] < 100:
                 del gestures[-1]
-                
         return SongModel(self.song, gestures, parent=self)
