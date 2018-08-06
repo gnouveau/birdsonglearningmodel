@@ -86,7 +86,11 @@ class SongModel:
                 if cur_pos < min_pos or max_pos < cur_pos:  # not enough space
                     logger.error('to_move < min_pos or max_pos < to_move')
                 else:
-                    new_pos = self.rng.triangular(min_pos, cur_pos, max_pos)  # triangular distribution
+                    try:
+                        new_pos = self.rng.triangular(min_pos, cur_pos, max_pos)  # triangular distribution
+                    except Exception as e:
+                        logger.error("song_model.mutate(): triangular function, exception raised: {}. So no mutation".format(e))
+                        continue
                     new_pos = int(new_pos)
                     gestures[to_move] = self.shift_gesture(gestures[to_move], new_pos)
             else:  # Do not mutate
