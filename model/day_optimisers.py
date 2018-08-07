@@ -141,6 +141,7 @@ def optimise_gesture_whole_local_search(songs, goal, conf, datasaver=None):
         datasaver = QuietDataSaver()
     if rng is None:
         rng = np.random.RandomState()
+    improvement_cpt = np.zeros(train_per_day)
     for itrain in range(train_per_day):
         isong = rng.randint(len(songs))
         song = songs[isong]
@@ -158,6 +159,10 @@ def optimise_gesture_whole_local_search(songs, goal, conf, datasaver=None):
         logger.info('new score {}'.format(hill_score))
         assert pre_score >= hill_score, "{} >= {} est faux".format(
             pre_score, hill_score)
+        if hill_score < pre_score:
+            improvement_cpt[itrain] += 1
+    datasaver.add(label='day', cond='after_day_learning',
+                  improvement_cpt=improvement_cpt)
     return songs
 
 def optimise_gesture_cmaes(songs, tutor_song, measure, comp):
