@@ -126,7 +126,7 @@ def plot_fig(sim, sims, titles):
         pos += nb_col
         
         plt.subplot(nb_row, nb_col, pos)
-        plt.plot(sim[i]["song"])
+        plt.plot(sim[i]["song"], color=color_song)
         plot_gesture_starts(sim[i]["starts"])
         plt.xlim(0, len(sim[i]["song"]))
         plt.title("Song model sound")
