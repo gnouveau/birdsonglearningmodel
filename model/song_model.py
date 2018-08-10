@@ -58,13 +58,13 @@ class SongModel:
         gestures = deepcopy(self.gestures)
         for i in range(n):
             act = self.rng.uniform()
-            if act <= 0.3 and len(gestures) > 2:  # Delete a gesture
+            if act <= 0.2 and len(gestures) > 2:  # Delete a gesture
                 logger.info('deleted')
                 to_del = self.rng.randint(len(gestures))
                 del gestures[to_del]
                 if to_del == 0:  # if the first gesture is suppressed
                     gestures[0][0] = 0  # the new one has to start at 0
-            elif act <= 0.5:  # split one gesture into two. Create a new gesture
+            elif act <= 0.4:  # split one gesture into two. Create a new gesture
                 add_after = self.rng.randint(len(gestures) - 1)
                 try:
                     add_at = self.rng.randint(gestures[add_after][0] + 100,
@@ -74,7 +74,7 @@ class SongModel:
                 logger.info('split')
                 new_gesture = self.shift_gesture(gestures[add_after], add_at)
                 gestures.insert(add_after + 1, new_gesture)
-            elif act <= 0.8:  # change the gesture's start
+            elif act <= 0.9:  # change the gesture's start
                 logger.info('moved')
                 to_move = self.rng.randint(1, len(gestures))
                 min_pos = gestures[to_move - 1][0] + 100
