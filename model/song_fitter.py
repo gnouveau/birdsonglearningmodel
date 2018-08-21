@@ -153,9 +153,11 @@ def fit_song(tutor_song, conf, datasaver=None):
     comp = conf['comp_obj']
     rng = conf['rng_obj']
     nb_split = conf.get('split', 10)
+    # muta_proba is a list of 4 values: [P(deletion), P(division), P(movement), P(no_mutation)]
+    muta_proba = conf['muta_proba']
 
     songs = [SongModel(song=tutor_song, priors=conf['prior'],
-                       nb_split=nb_split, rng=rng)
+                       nb_split=nb_split, rng=rng, muta_proba=muta_proba)
              for i in range(nb_conc_song)]
     
     goal = measure(tutor_song)
@@ -175,11 +177,11 @@ def fit_song(tutor_song, conf, datasaver=None):
             else:
                 target = tutor_song
             songs = day_optimisation(songs, target, conf,
-                                     datasaver=datasaver)
+                                     datasaver=datasaver, iday=iday)
         score = get_scores(goal, songs, measure, comp)
         if iday + 1 != nb_day:
             logger.debug(score)
-            datasaver.add(moment='BeforeNight',
+            datasaver.add(moment='before_night',
                           songs=songs, scores=score)
             logger.info('z\tz\tz\tNight\tz\tz\tz')
             with datasaver.set_context('night_optim'):
@@ -193,7 +195,7 @@ def fit_song(tutor_song, conf, datasaver=None):
                                                conf, 
                                                datasaver=datasaver)
             score = get_scores(goal, songs, measure, comp)
-            datasaver.add(moment='AfterNight', songs=songs, scores=score)
+            datasaver.add(moment='after_night', songs=songs, scores=score)
         datasaver.write()
     datasaver.add(moment='End', songs=songs,
                   scores=get_scores(goal, songs, measure, comp))

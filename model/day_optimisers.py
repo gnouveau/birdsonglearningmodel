@@ -50,7 +50,7 @@ def optimise_gesture_dummy(songs, tutor_song, measure, comp, train_per_day=10,
     return songs
 
 
-def optimise_gesture_padded(songs, tutor_song, conf, datasaver=None):
+def optimise_gesture_padded(songs, tutor_song, conf, datasaver=None, iday=None):
     """Optimise gestures randomly from the song models with dummy algorithm.
 
     Include the previous and next gesture in the evaluation to remove
@@ -92,7 +92,7 @@ def optimise_gesture_padded(songs, tutor_song, conf, datasaver=None):
     return songs
 
 
-def optimise_gesture_whole(songs, goal, conf, datasaver=None):
+def optimise_gesture_whole(songs, goal, conf, datasaver=None, iday=None):
     """Optimise gestures randomly from the song models with dummy algorithm.
 
     Include the previous and next gesture in the evaluation to remove
@@ -128,7 +128,8 @@ def optimise_gesture_whole(songs, goal, conf, datasaver=None):
     return songs
 
 
-def optimise_gesture_whole_local_search(songs, goal, conf, datasaver=None):
+def optimise_gesture_whole_local_search(songs, goal, conf,
+                                        datasaver=None, iday=None):
     """
     Optimise gestures randomly from the song models
     with a stochastic local search
@@ -153,8 +154,8 @@ def optimise_gesture_whole_local_search(songs, goal, conf, datasaver=None):
             itrain+1, train_per_day, ig, isong, len(s), pre_score))
         res, hill_score = fit_gesture_whole_local_search(
             goal, song, ig, conf)
-        # datasaver.add(pre_score=pre_score,
-        #               new_score=hill_score, isong=isong, ig=ig)
+        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
+                      pre_score=pre_score, new_score=hill_score)
         songs[isong].gestures[ig][1] = deepcopy(res)
         logger.info('new score {}'.format(hill_score))
         assert pre_score >= hill_score, "{} >= {} est faux".format(

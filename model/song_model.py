@@ -15,7 +15,7 @@ class SongModel:
     """Song model structure."""
 
     def __init__(self, song, gestures=None, nb_split=20, rng=None,
-                 parent=None, priors=None):
+                 parent=None, priors=None, muta_proba=None):
         """
         Initialize the song model structure.
 
@@ -51,6 +51,20 @@ class SongModel:
         # Do not keep track of parent for now, avoid blow up in copy
         self.parent = None
 
+        if muta_proba is None:
+            string = 'Have to define the probabilities of deletion, division and movement'
+            raise Exception(string)
+        if len(muta_proba) != 4:
+            string = 'The list of mutation probabilities has to have 4 values: '
+            string += 'P(deletion), P(division), P(movement) and P(no_mutation)'
+            raise Exception(string)
+        if sum(muta_proba) != 1:
+            raise Exception('Sum of probabilites is not equal to 1 ({})'.format(muta_proba))
+        # Comment: the last value of muta_proba will not be used in practice
+        self.muta_proba = muta_proba
+        self.cum_sum_proba = [sum(muta_proba[:end]) for end in range(1, len(muta_proba)+1)]
+
+
     def mutate(self, n=1):
         """Give a new song model with new GTEs.
         n: number of mutations
@@ -58,13 +72,13 @@ class SongModel:
         gestures = deepcopy(self.gestures)
         for i in range(n):
             act = self.rng.uniform()
-            if act <= 0.2 and len(gestures) > 2:  # Delete a gesture
+            if act <= self.cum_sum_proba[0] and len(gestures) > 2:  # Delete a gesture
                 logger.info('deleted')
                 to_del = self.rng.randint(len(gestures))
                 del gestures[to_del]
                 if to_del == 0:  # if the first gesture is suppressed
                     gestures[0][0] = 0  # the new one has to start at 0
-            elif act <= 0.4:  # split one gesture into two. Create a new gesture
+            elif act <= self.cum_sum_proba[1]:  # split one gesture into two. Create a new gesture
                 add_after = self.rng.randint(len(gestures) - 1)
                 try:
                     add_at = self.rng.randint(gestures[add_after][0] + 100,
@@ -74,7 +88,7 @@ class SongModel:
                 logger.info('split')
                 new_gesture = self.shift_gesture(gestures[add_after], add_at)
                 gestures.insert(add_after + 1, new_gesture)
-            elif act <= 0.9:  # change the gesture's start
+            elif act <= self.cum_sum_proba[2]:  # change the gesture's start
                 logger.info('moved')
                 to_move = self.rng.randint(1, len(gestures))
                 min_pos = gestures[to_move - 1][0] + 100
@@ -110,7 +124,8 @@ class SongModel:
                     clean = True
             if len(self.song) - gestures[-1][0] < 100:
                 del gestures[-1]
-        return SongModel(self.song, gestures, parent=self)
+        return SongModel(self.song, gestures, parent=self,
+                         muta_proba = self.muta_proba)
 
     def gen_sound(self, range_=None, fixed_normalize=True):
         """Generate the full song.
@@ -265,4 +280,5 @@ class SongModel:
                     clean = True
             if len(self.song) - gestures[-1][0] < 100:
                 del gestures[-1]
-        return SongModel(self.song, gestures, parent=self)
+        return SongModel(self.song, gestures, parent=self,
+                         muta_proba = self.muta_proba)

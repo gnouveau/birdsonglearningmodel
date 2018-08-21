@@ -23,7 +23,8 @@ EDITOR = os.environ.get('EDITOR', 'vim')
 
 
 def get_confs(confdir):
-    """Iterator over all combinations of the files in subfolders."""
+    """Iterator over all combinations of the files in subfolders.
+    Be careful of the .json~ files in the config folders """
     confs = []
     for folder in sorted(glob(join(confdir, "*"))):
         if not isdir(folder):
