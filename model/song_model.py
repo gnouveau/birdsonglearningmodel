@@ -51,6 +51,7 @@ class SongModel:
         # Do not keep track of parent for now, avoid blow up in copy
         self.parent = None
 
+        muta_proba = deepcopy(muta_proba)
         if muta_proba is None:
             string = 'Have to define the probabilities of deletion, division and movement'
             raise Exception(string)

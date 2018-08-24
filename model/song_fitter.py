@@ -53,7 +53,8 @@ from night_optimisers import mutate_best_models_dummy, \
                              mutate_microbial, \
                              mutate_microbial_extended_elite, \
                              mutate_microbial_extended_uniform, \
-                             mutate_microbial_diversity_uniform
+                             mutate_microbial_diversity_uniform, \
+                             mutate_microbial_diversity_continuous_uniform
 from song_model import SongModel
 import birdsonganalysis as bsa
 
@@ -78,7 +79,8 @@ NIGHT_LEARNING_MODELS = {
     'mutate_microbial': mutate_microbial,
     'mutate_microbial_extended_elite': mutate_microbial_extended_elite,
     'mutate_microbial_extended_uniform': mutate_microbial_extended_uniform,
-    'mutate_microbial_diversity_uniform': mutate_microbial_diversity_uniform
+    'mutate_microbial_diversity_uniform': mutate_microbial_diversity_uniform,
+    'mutate_microbial_diversity_continuous_uniform': mutate_microbial_diversity_continuous_uniform
 }
 """
 Available comparison methods for the configuration files
@@ -185,7 +187,10 @@ def fit_song(tutor_song, conf, datasaver=None):
                           songs=songs, scores=score)
             logger.info('z\tz\tz\tNight\tz\tz\tz')
             with datasaver.set_context('night_optim'):
-                if conf['nlm'] == "mutate_microbial_diversity_uniform":
+                if conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
+                    songs = night_optimisation(songs, conf,
+                                               datasaver=datasaver)
+                elif conf['nlm'] == "mutate_microbial_diversity_uniform":
                     songs = night_optimisation(songs,
                                                goal, iday, nb_day, conf, 
                                                datasaver=datasaver)

@@ -1,5 +1,6 @@
 """Measures for comparing songs and song parts."""
 
+from copy import deepcopy
 import numpy as np
 import birdsonganalysis as bsa
 from python_speech_features import mfcc
@@ -59,32 +60,83 @@ def get_scores(goal, song_models, measure, comp):
 def genetic_neighbours(songs, all_songs, threshold=2000):
     """Count the number of neighbors of each songs.
 
-    A neighbour is a song of whom the gesture beginnning are close enough
-    to those of the song.
+    A neighbour of a song is a song of whom the gesture's beginnnings
+    are close enough to those of the first one.
     """
     neighbours = np.zeros(len(songs))
-    for iref, refsong in enumerate(songs):
+    for i_ref, ref_song in enumerate(songs):
         nb_close = 0
-        own = [gesture[0] for gesture in refsong.gestures]
-        for isong, othersong in enumerate(all_songs):
-            if othersong is refsong:
+        own_gest = [gesture[0] for gesture in ref_song.gestures]
+        for i_song, other_song in enumerate(all_songs):
+            if other_song is ref_song:
                 nb_close += 1
                 continue
-            song_dist = 0
-            other = [gesture[0] for gesture in othersong.gestures]
-            for i, start in enumerate(own):
-                near_i = bisect_left(other, start)
-                if near_i == 0:
-                    song_dist += np.abs(start - other[0])
-                elif near_i == len(other):
-                    song_dist += np.abs(start - other[-1])
-                else:
-                    song_dist += np.min((np.abs(start - other[near_i - 1]),
-                                        np.abs(start - other[near_i])))
-            if song_dist < threshold:
+            other_gest = [gesture[0] for gesture in other_song.gestures]
+            gest_metric = neighbours_metric(own_gest, other_gest)
+            if gest_metric < threshold:
                 nb_close += 1
-        neighbours[iref] = nb_close
+        neighbours[i_ref] = nb_close
     return neighbours
+
+
+def neighbours_metric(own_gest, other_gest):
+    """Measure the asymmetrical metric between the gesture's starts of one song
+    and the gesture's starts which are the closest among those in the other song
+    """
+    gest_metric = 0
+    for i, start in enumerate(own_gest):
+        near_i = bisect_left(other_gest, start)
+        if near_i == 0:
+            gest_metric += np.abs(start - other_gest[0])
+        elif near_i == len(other_gest):
+            gest_metric += np.abs(start - other_gest[-1])
+        else:
+            gest_metric += np.min((np.abs(start - other_gest[near_i - 1]),
+                                np.abs(start - other_gest[near_i])))
+    return gest_metric
+
+
+def generate_neighbours_metrics_list(ref_song, all_songs, mirror=False):
+    """ Measure the asymmetrical metric between a ref_song and all the others.
+    If mirror is True, it will measure for each the others songs,
+    their metrics to the ref_song.
+    return a list of metrics
+    """
+    l_neigh_metric = np.zeros(len(all_songs))
+    own_gest = [gesture[0] for gesture in ref_song.gestures]
+    for i_song, other_song in enumerate(all_songs):
+        if other_song is ref_song:
+            continue
+        other_gest = [gesture[0] for gesture in other_song.gestures]
+        if not mirror:
+            gest_metric = neighbours_metric(own_gest, other_gest)
+        else:
+            gest_metric = neighbours_metric(other_gest, own_gest)
+        l_neigh_metric[i_song] = gest_metric
+    return l_neigh_metric
+
+
+def generate_mat_neighbours_metrics(songs):
+    """"Measure for each song its asymmetrical metric from the others songs.
+    return the result as a matrix
+    """
+    mat_neigh_metric = np.zeros((len(songs), len(songs)))
+    for i_ref, ref_song in enumerate(songs):
+        l_neigh_metric = generate_neighbours_metrics_list(ref_song, songs)
+        mat_neigh_metric[i_ref] = l_neigh_metric
+    return mat_neigh_metric
+
+
+def update_mat_neighbours_metrics(mat_neigh_metric, i_ref, ref_song, all_songs):
+    """Update the line and the column values in the matrix
+    relative to one specific song
+    """
+    mat_neigh_metric = deepcopy(mat_neigh_metric)
+    line = generate_neighbours_metrics_list(ref_song, all_songs)
+    column = generate_neighbours_metrics_list(ref_song, all_songs, mirror=True)
+    mat_neigh_metric[i_ref] = line
+    mat_neigh_metric[:, i_ref] = column
+    return mat_neigh_metric
 
 
 def normalize_and_center(song):

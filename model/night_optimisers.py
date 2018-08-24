@@ -7,7 +7,9 @@ import logging
 import numpy as np
 
 from datasaver import QuietDataSaver
-from measures import get_scores, genetic_neighbours
+from measures import (get_scores, genetic_neighbours,
+                      generate_mat_neighbours_metrics,
+                      update_mat_neighbours_metrics)
 
 logger = logging.getLogger('night_optimisers')
 
@@ -144,6 +146,28 @@ def mutate_microbial_diversity(songs, goal, cur_day, nb_day,
     return songs
 
 
+def mutate_microbial_diversity_continuous(songs, conf, datasaver=None):
+    """microbial genetic algorithm.
+    fitness objective: pressure of diversity: maximize the mean metric of
+    'distance' from the others songs"""
+    if datasaver is None:
+        datasaver = QuietDataSaver()
+    songs = np.asarray(songs)
+    nb_replay = conf['replay']
+    rng = conf['rng_obj']
+    mat_neigh_metric = generate_mat_neighbours_metrics(songs)
+    for i in range(nb_replay):
+        picked_songs = rng.choice(len(songs), size=2, replace=False)
+        best_id = np.argmax(np.mean(mat_neigh_metric[picked_songs], axis=1))
+        loser_id = 1 - best_id
+        songs[picked_songs[loser_id]] = songs[picked_songs[best_id]].mutate()
+        mat_neigh_metric = update_mat_neighbours_metrics(mat_neigh_metric,
+                                                         picked_songs[loser_id],
+                                                         songs[picked_songs[loser_id]],
+                                                         songs)
+    return songs
+ 
+
 def extend_pop(songs, conf, datasaver=None):
     """Extend the size of a population."""
     if datasaver is None:
@@ -211,12 +235,30 @@ def mutate_microbial_extended_uniform(songs, goal, conf, datasaver=None):
 
 def mutate_microbial_diversity_uniform(songs, goal, cur_day, nb_day,
                                        conf, datasaver=None):
-    """Do a microbial on an extended population and restrict by random."""
+    """Do a microbial on an extended population and restrict by random.
+    The selection in the microbial genetic algorithm penalize
+    songs which have more neighbours"""
     datasaver.add(label='night', cond='before_evening', pop=songs)
     new_pop = extend_pop(songs, conf, datasaver)
     datasaver.add(label='night', cond='evening', pop=new_pop)
     mutate_pop = mutate_microbial_diversity(new_pop, goal, cur_day,
                                             nb_day, conf, datasaver)
+    datasaver.add(label='night', cond="before_morning", pop=mutate_pop)
+    new_pop = restrict_pop_uniform(mutate_pop, conf, datasaver)
+    datasaver.add(label='night', cond='morning', pop=new_pop)
+    return new_pop
+
+
+def mutate_microbial_diversity_continuous_uniform(songs, conf, datasaver=None):
+    """Do a microbial on an extended population and restrict by random.
+    The selection in the microbial genetic algotrithm favours
+    song which have the biggest mean metric of 'distance'
+    from the others songs"""
+    datasaver.add(label='night', cond='before_evening', pop=songs)
+    new_pop = extend_pop(songs, conf, datasaver)
+    datasaver.add(label='night', cond='evening', pop=new_pop)
+    mutate_pop = mutate_microbial_diversity_continuous(new_pop, conf,
+                                                       datasaver)
     datasaver.add(label='night', cond="before_morning", pop=mutate_pop)
     new_pop = restrict_pop_uniform(mutate_pop, conf, datasaver)
     datasaver.add(label='night', cond='morning', pop=new_pop)
