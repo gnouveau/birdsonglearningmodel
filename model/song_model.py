@@ -82,8 +82,12 @@ class SongModel:
             elif act <= self.cum_sum_proba[1]:  # split one gesture into two. Create a new gesture
                 add_after = self.rng.randint(len(gestures) - 1)
                 try:
-                    add_at = self.rng.randint(gestures[add_after][0] + 100,
-                                           gestures[add_after + 1][0] - 100)
+                    if add_after == len(gestures) - 1:
+                        add_at = self.rng.randint(gestures[add_after][0] + 100,
+                                                  len(self.song) - 100 + 1)
+                    else:
+                        add_at = self.rng.randint(gestures[add_after][0] + 100,
+                                                  gestures[add_after + 1][0] - 100 + 1)
                 except ValueError:  # There is no new place
                     continue
                 logger.info('split')
