@@ -107,7 +107,9 @@ def gen_alphabeta(params, length, falpha, fbeta,
         
     alpha_beta[:, 0] = np.where(alpha_beta[:, 0] < 0, 0, alpha_beta[:, 0])
     # Force Beta to only have negative values
-    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > 0, 0, alpha_beta[:, 1])
+#    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > 0, 0, alpha_beta[:, 1])
+	# minimum beta value = -0.002
+    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > -0.002, -0.002, alpha_beta[:, 1])
     return alpha_beta
 
 

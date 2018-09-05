@@ -46,7 +46,8 @@ from scipy.io import wavfile
 from datasaver import DataSaver, QuietDataSaver
 from day_optimisers import optimise_gesture_dummy, optimise_gesture_padded,\
                            optimise_gesture_whole,\
-                           optimise_gesture_whole_local_search
+                           optimise_gesture_whole_local_search,\
+                           optimise_proportional_training
 from measures import bsa_measure, get_scores, normalize_and_center
 from night_optimisers import mutate_best_models_dummy, \
                              mutate_best_models_elite, \
@@ -68,7 +69,8 @@ DAY_LEARNING_MODELS = {
     'optimise_gesture_dummy': optimise_gesture_dummy,
     'optimise_gesture_padded': optimise_gesture_padded,
     'optimise_gesture_whole': optimise_gesture_whole,
-    'optimise_gesture_whole_local_search': optimise_gesture_whole_local_search
+    'optimise_gesture_whole_local_search': optimise_gesture_whole_local_search,
+    'optimise_proportional_training': optimise_proportional_training
 }
 """
 Available night learning models for the configuration files
@@ -169,15 +171,17 @@ def fit_song(tutor_song, conf, datasaver=None):
     datasaver.add(moment='Start', songs=songs,
                   scores=get_scores(goal, songs, measure, comp))
 
+    cond1 = conf['dlm'] == 'optimise_gesture_whole'
+    cond2 = conf['dlm'] == 'optimise_gesture_whole_local_search'
+    cond3 = conf['dlm'] == 'optimise_proportional_training'
+    if cond1 or cond2 or cond3:
+        target = goal
+    else:
+        target = tutor_song
+        
     for iday in range(nb_day):
         logger.info('*\t*\t*\tDay {} of {}\t*\t*\t*'.format(iday+1, nb_day))
         with datasaver.set_context('day_optim'):
-            cond1 = conf['dlm'] == 'optimise_gesture_whole'
-            cond2 = conf['dlm'] == 'optimise_gesture_whole_local_search'
-            if cond1 or cond2:
-                target = goal
-            else:
-                target = tutor_song
             songs = day_optimisation(songs, target, conf,
                                      datasaver=datasaver, iday=iday)
         score = get_scores(goal, songs, measure, comp)

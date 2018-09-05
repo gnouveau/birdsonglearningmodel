@@ -166,6 +166,53 @@ def optimise_gesture_whole_local_search(songs, goal, conf,
                   improvement_cpt=improvement_cpt)
     return songs
 
+def optimise_proportional_training(songs, goal, conf,
+                                        datasaver=None, iday=None):
+    """
+    Optimise gestures randomly from the song models
+    with a stochastic local search
+    The number of trainings for this day is proportional to
+    the total number of gestures in the day songs
+    """
+    measure = conf['measure_obj']
+    comp = conf['comp_obj']
+    rng = conf['rng_obj']
+    train_multiplier = conf.get('train_multiplier', 3)
+    if datasaver is None:
+        datasaver = QuietDataSaver()
+    if rng is None:
+        rng = np.random.RandomState()
+    train_per_day = 0
+    for song in songs:
+        train_per_day += len(song.gestures)
+    train_per_day *= train_multiplier
+    datasaver.add(label='day', cond='define_number_of_trainings',
+                  train_per_day=train_per_day)
+    improvement_cpt = np.zeros(train_per_day)
+    for itrain in range(train_per_day):
+        isong = rng.randint(len(songs))
+        song = songs[isong]
+        ig = rng.randint(len(song.gestures))
+        s = song.gen_sound()
+        c = measure(s)
+        pre_score = comp(goal, c)
+        logger.info('{}/{}: fit gesture {} of song {} (length {}, score {})'.format(
+            itrain+1, train_per_day, ig, isong, len(s), pre_score))
+        res, hill_score = fit_gesture_whole_local_search(
+            goal, song, ig, conf)
+        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
+                      pre_score=pre_score, new_score=hill_score)
+        songs[isong].gestures[ig][1] = deepcopy(res)
+        logger.info('new score {}'.format(hill_score))
+        assert pre_score >= hill_score, "{} >= {} est faux".format(
+            pre_score, hill_score)
+        if hill_score < pre_score:
+            improvement_cpt[itrain] += 1
+    datasaver.add(label='day', cond='after_day_learning',
+                  improvement_cpt=improvement_cpt)
+    return songs
+
+
 def optimise_gesture_cmaes(songs, tutor_song, measure, comp):
     """Optimise gestures guided with a CMA-ES algorithm."""
     raise NotImplementedError()
