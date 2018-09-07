@@ -55,7 +55,8 @@ from night_optimisers import mutate_best_models_dummy, \
                              mutate_microbial_extended_elite, \
                              mutate_microbial_extended_uniform, \
                              mutate_microbial_diversity_uniform, \
-                             mutate_microbial_diversity_continuous_uniform
+                             mutate_microbial_diversity_continuous_uniform, \
+                             mutate_microbial_diversity_distance_uniform
 from song_model import SongModel
 import birdsonganalysis as bsa
 
@@ -82,7 +83,8 @@ NIGHT_LEARNING_MODELS = {
     'mutate_microbial_extended_elite': mutate_microbial_extended_elite,
     'mutate_microbial_extended_uniform': mutate_microbial_extended_uniform,
     'mutate_microbial_diversity_uniform': mutate_microbial_diversity_uniform,
-    'mutate_microbial_diversity_continuous_uniform': mutate_microbial_diversity_continuous_uniform
+    'mutate_microbial_diversity_continuous_uniform': mutate_microbial_diversity_continuous_uniform,
+    'mutate_microbial_diversity_distance_uniform': mutate_microbial_diversity_distance_uniform
 }
 """
 Available comparison methods for the configuration files
@@ -178,7 +180,7 @@ def fit_song(tutor_song, conf, datasaver=None):
         target = goal
     else:
         target = tutor_song
-        
+
     for iday in range(nb_day):
         logger.info('*\t*\t*\tDay {} of {}\t*\t*\t*'.format(iday+1, nb_day))
         with datasaver.set_context('day_optim'):
@@ -191,7 +193,10 @@ def fit_song(tutor_song, conf, datasaver=None):
                           songs=songs, scores=score)
             logger.info('z\tz\tz\tNight\tz\tz\tz')
             with datasaver.set_context('night_optim'):
-                if conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
+                if conf['nlm'] == "mutate_microbial_diversity_distance_uniform":
+                    songs = night_optimisation(songs, conf,
+                                               datasaver=datasaver)
+                elif conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
                     songs = night_optimisation(songs, conf,
                                                datasaver=datasaver)
                 elif conf['nlm'] == "mutate_microbial_diversity_uniform":

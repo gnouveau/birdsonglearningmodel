@@ -57,6 +57,20 @@ def get_scores(goal, song_models, measure, comp):
     return scores
 
 
+def normalize_and_center(song):
+    """Normalize the song between -1 and 1 then centres it around its mean.
+    Initialy implemented to normalize the tutor song
+    """
+    # Normalization
+    song = np.array(song, dtype=np.double) # to avoid overflowing calculation
+    min_v = song.min()
+    max_v = song.max()
+    song = 2 * (song - min_v) / (max_v - min_v) - 1
+    # Centered with the mean
+    song = song - song.mean()
+    return song
+
+
 def genetic_neighbours(songs, all_songs, threshold=2000):
     """Count the number of neighbors of each songs.
 
@@ -79,6 +93,66 @@ def genetic_neighbours(songs, all_songs, threshold=2000):
     return neighbours
 
 
+###############################################################################
+# SYMMETRICAL DISTANCE FUNCTIONS
+###############################################################################
+
+def neighbours_distance(own_gest, other_gest):
+    """Measure the symmetrical distance between two songs.
+    It is the mean of the metrics between the two songs
+    taken in both direction
+    """
+    metric_own_to_other = neighbours_metric(own_gest, other_gest)
+    metric_other_to_own = neighbours_metric(other_gest, own_gest)
+    return (metric_own_to_other + metric_other_to_own) / 2
+
+def generate_neighbours_distances_list(ref_song, all_songs):
+    """Measure the symmetrical distance bet one song and all the others.
+    return a list of distances
+    """
+    l_neigh_metric = np.zeros(len(all_songs))
+    own_gest = [gesture[0] for gesture in ref_song.gestures]
+    for i_song, other_song in enumerate(all_songs):
+        if other_song is ref_song:
+            continue
+        other_gest = [gesture[0] for gesture in other_song.gestures]
+        gest_dist = neighbours_distance(own_gest, other_gest)
+        l_neigh_metric[i_song] = gest_dist
+    return l_neigh_metric
+
+
+def generate_mat_neighbours_distances(songs):
+    """Create a matrix with the distances of each song to each others.
+    Avoids redundant calculations, because the matrix is symmetrical
+    """
+    songs = deepcopy(songs)
+    mat_neigh_dist = np.zeros((len(songs), len(songs)))
+    i_ref = 0
+    while len(songs) != 0:
+        ref_song = songs[0]
+        l_neigh_dist = generate_neighbours_distances_list(ref_song, songs)
+        mat_neigh_dist[i_ref, i_ref:] = l_neigh_dist
+        mat_neigh_dist[i_ref:, i_ref] = l_neigh_dist
+        songs = np.delete(songs, 0)
+        i_ref += 1
+    return mat_neigh_dist
+
+
+def update_mat_neighbours_distances(mat_neigh_dist, i_ref, all_songs):
+    """Update the line and the column values in the matrix
+    relative to one specific song, using the symmetrical distance
+    """
+    ref_song = all_songs[i_ref]
+    mat_neigh_dist = deepcopy(mat_neigh_dist)
+    new_list = generate_neighbours_distances_list(ref_song, all_songs)
+    mat_neigh_dist[i_ref] = new_list
+    mat_neigh_dist[:, i_ref] = new_list
+    return mat_neigh_dist
+
+###############################################################################
+# ASYMMETRICAL METRIC FUNCTIONS
+###############################################################################
+
 def neighbours_metric(own_gest, other_gest):
     """Measure the asymmetrical metric between the gesture's starts of one song
     and the gesture's starts which are the closest among those in the other song
@@ -98,8 +172,7 @@ def neighbours_metric(own_gest, other_gest):
 
 def generate_neighbours_metrics_list(ref_song, all_songs, mirror=False):
     """ Measure the asymmetrical metric between a ref_song and all the others.
-    If mirror is True, it will measure for each the others songs,
-    their metrics to the ref_song.
+    If mirror is True, it will measure for each others songs, their metrics to the ref_song.
     return a list of metrics
     """
     l_neigh_metric = np.zeros(len(all_songs))
@@ -127,27 +200,14 @@ def generate_mat_neighbours_metrics(songs):
     return mat_neigh_metric
 
 
-def update_mat_neighbours_metrics(mat_neigh_metric, i_ref, ref_song, all_songs):
+def update_mat_neighbours_metrics(mat_neigh_metric, i_ref, all_songs):
     """Update the line and the column values in the matrix
     relative to one specific song
     """
+    ref_song = all_songs[i_ref]
     mat_neigh_metric = deepcopy(mat_neigh_metric)
     line = generate_neighbours_metrics_list(ref_song, all_songs)
     column = generate_neighbours_metrics_list(ref_song, all_songs, mirror=True)
     mat_neigh_metric[i_ref] = line
     mat_neigh_metric[:, i_ref] = column
     return mat_neigh_metric
-
-
-def normalize_and_center(song):
-    """Normalize the song between -1 and 1 then centres it around its mean.
-    Initialy implemented to normalize the tutor song
-    """
-    # Normalization
-    song = np.array(song, dtype=np.double) # to avoid overflowing calculation
-    min_v = song.min()
-    max_v = song.max()
-    song = 2 * (song - min_v) / (max_v - min_v) - 1
-    # Centered with the mean
-    song = song - song.mean()
-    return song

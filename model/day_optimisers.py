@@ -186,6 +186,7 @@ def optimise_proportional_training(songs, goal, conf,
     for song in songs:
         train_per_day += len(song.gestures)
     train_per_day *= train_multiplier
+    train_per_day = round(train_per_day)  # avoid possible float value with train_multiplier < 1
     datasaver.add(label='day', cond='define_number_of_trainings',
                   train_per_day=train_per_day)
     improvement_cpt = np.zeros(train_per_day)
