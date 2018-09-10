@@ -147,7 +147,7 @@ def plot_fig(sim, sims, titles):
     
         ax = plt.subplot(nb_row, nb_col, pos)
         ax = utils.draw_learning_curve(sim[i]["rd"], ax=ax)
-        ax.axhline(y=sim[i]["Boari_score"], color="C3",
+        ax.axhline(y=-1 * sim[i]["Boari_score"], color="C3",
                       linestyle='-', label="Boari's error")
         ax.legend()
         pos += nb_col
@@ -172,14 +172,17 @@ def plot_fig(sim, sims, titles):
         pos += nb_col
         
         # Normalization of alpha values for better comparison
-        num = sim[i]["synth_ab"][:, 0] - np.min(sim[i]["synth_ab"][:, 0])
-        min_v = np.min(sim[i]["synth_ab"][:, 0])
-        max_v = np.max(sim[i]["synth_ab"][:, 0])
-        denum = max_v - min_v
-        a_synth = num / denum
-        num = sim[i]["ab"][:,0] - np.nanmin(sim[i]["ab"][:,0])
-        denum = np.nanmax(sim[i]["ab"][:,0]) - np.nanmin(sim[i]["ab"][:,0])
-        a_sm = num / denum
+#        num = sim[i]["synth_ab"][:, 0] - np.min(sim[i]["synth_ab"][:, 0])
+#        min_v = np.min(sim[i]["synth_ab"][:, 0])
+#        max_v = np.max(sim[i]["synth_ab"][:, 0])
+#        denum = max_v - min_v
+#        a_synth = num / denum
+#        num = sim[i]["ab"][:,0] - np.nanmin(sim[i]["ab"][:,0])
+#        denum = np.nanmax(sim[i]["ab"][:,0]) - np.nanmin(sim[i]["ab"][:,0])
+#        a_sm = num / denum
+
+        a_synth = sim[i]["synth_ab"][:, 0]
+        a_sm = sim[i]["ab"][:,0]
 
         # Inversion of the plot order for better readability
         ax = plt.subplot(nb_row, nb_col, pos)
@@ -188,7 +191,8 @@ def plot_fig(sim, sims, titles):
         plot_gesture_starts(sim[i]["starts"])
         plt.xlim(0, len(a_sm))
         ax.legend((line2, line1), ("synth", "song"))
-        plt.title("Alpha (normalized)")
+#        plt.title("Alpha (normalized)")
+        plt.title("Alpha")
         pos += nb_col
         
         # Calculation of each feature error

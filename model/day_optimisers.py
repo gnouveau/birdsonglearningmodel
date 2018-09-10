@@ -146,6 +146,7 @@ def optimise_gesture_whole_local_search(songs, goal, conf,
     for itrain in range(train_per_day):
         isong = rng.randint(len(songs))
         song = songs[isong]
+        pre_song = song.clone()
         ig = rng.randint(len(song.gestures))
         s = song.gen_sound()
         c = measure(s)
@@ -154,9 +155,11 @@ def optimise_gesture_whole_local_search(songs, goal, conf,
             itrain+1, train_per_day, ig, isong, len(s), pre_score))
         res, hill_score = fit_gesture_whole_local_search(
             goal, song, ig, conf)
-        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
-                      pre_score=pre_score, new_score=hill_score)
         songs[isong].gestures[ig][1] = deepcopy(res)
+        new_song = songs[isong].clone()
+        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
+                      pre_score=pre_score, new_score=hill_score,
+                      pre_song=pre_song, new_song=new_song)
         logger.info('new score {}'.format(hill_score))
         assert pre_score >= hill_score, "{} >= {} est faux".format(
             pre_score, hill_score)
@@ -193,6 +196,7 @@ def optimise_proportional_training(songs, goal, conf,
     for itrain in range(train_per_day):
         isong = rng.randint(len(songs))
         song = songs[isong]
+        pre_song = song.clone()
         ig = rng.randint(len(song.gestures))
         s = song.gen_sound()
         c = measure(s)
@@ -201,9 +205,11 @@ def optimise_proportional_training(songs, goal, conf,
             itrain+1, train_per_day, ig, isong, len(s), pre_score))
         res, hill_score = fit_gesture_whole_local_search(
             goal, song, ig, conf)
-        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
-                      pre_score=pre_score, new_score=hill_score)
         songs[isong].gestures[ig][1] = deepcopy(res)
+        new_song = songs[isong].clone()
+        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
+                      pre_score=pre_score, new_score=hill_score,
+                      pre_song=pre_song, new_song=new_song)
         logger.info('new score {}'.format(hill_score))
         assert pre_score >= hill_score, "{} >= {} est faux".format(
             pre_score, hill_score)

@@ -197,10 +197,10 @@ def fit_song(tutor_song, conf, datasaver=None):
                 if conf['nlm'] == "no_night":
                     pass
                 elif conf['nlm'] == "mutate_microbial_diversity_distance_uniform":
-                    songs = night_optimisation(songs, conf,
+                    songs = night_optimisation(songs, conf, i_night=iday,
                                                datasaver=datasaver)
                 elif conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
-                    songs = night_optimisation(songs, conf,
+                    songs = night_optimisation(songs, conf, i_night=iday,
                                                datasaver=datasaver)
                 elif conf['nlm'] == "mutate_microbial_diversity_uniform":
                     songs = night_optimisation(songs,

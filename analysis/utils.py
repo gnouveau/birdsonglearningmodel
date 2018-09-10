@@ -77,14 +77,21 @@ def err_per_feat(mtutor, msong):
 
 
 def draw_learning_curve(rd, ax=None):
-    score_array = np.array([list(a) for a in rd['scores']]).T
+    # multiply by -1 to have an ascending curve
+    # multiple plots
+#    score_array = -1 * np.array([list(a) for a in rd['scores']]).T
+    # single plot
+    score_array = -1 * np.array([np.amin(scores) for scores in rd['scores']])
     if ax is None:
         fig = plt.figure(figsize=(16, 5))
         ax = fig.gca()
     for i in range(1, len(rd['scores']), 2):
         ax.axvspan(i, i+1, facecolor='darkblue', alpha=0.1)
-    for scores in score_array:
-        plt.plot(scores)
+    # multiple plots
+#    for scores in score_array:
+#        plt.plot(scores)
+    # single plot
+    plt.plot(score_array)
     ax.set_xticks(range(0, len(rd['scores']), 20))
     ax.set_xticklabels(range(0, len(rd['scores'])//2, 10))
     ax.set_xlim(0, len(rd['scores']))
@@ -313,7 +320,7 @@ class GridAnalyser:
                                            synth,
                                            self.conf[i]['coefs'],
                                            tutor_feat)
-            ax.axhline(score, color="orange", label="Erreur avec méthode de Boari")
+            ax.axhline(-1 * score, color="orange", label="Erreur avec méthode de Boari")
             print("Boari score:", score)
             best = np.argmin(self.rd[i]['scores'].iloc[-1])
             best_score = self.rd[i]['scores'].iloc[-1][best]

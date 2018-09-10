@@ -130,6 +130,7 @@ def mutate_microbial_diversity(songs, goal, cur_day, nb_day,
 #    diversity_decay = conf.get('decay', None)
 #    if diversity_decay == 'linear':
 #        diversity_weight = diversity_weight * (1 - (cur_day / (nb_day - 1)))
+    datasaver.add(cond="init_pop", songs=songs)
     for i in range(nb_replay):
         picked_songs = rng.choice(len(songs), size=2, replace=False)
         scores = get_scores(goal, songs[picked_songs], measure, comp)
@@ -139,17 +140,22 @@ def mutate_microbial_diversity(songs, goal, cur_day, nb_day,
         # Penalise if too much gestures
 #        nb_gestures = np.array([len(songs[picked_songs[0]].gestures),
 #                                len(songs[picked_songs[1]].gestures)])
-#        best = np.argmin(scores * (nb_similar**diversity_weight)
+#        best_id = np.argmin(scores * (nb_similar**diversity_weight)
 #                         * (nb_gestures**bloat_weight))
         
-        best = np.argmin(scores * (nb_similar**diversity_weight))
+        best_id = np.argmin(scores * (nb_similar**diversity_weight))
         
-        loser = 1 - best  # if best == 0: loser = 1, else: loser = 0
-        songs[picked_songs[loser]] = songs[picked_songs[best]].mutate()
+        loser_id = 1 - best_id  # if best_id == 0: loser_id = 1, else: loser_id = 0
+        songs[picked_songs[loser_id]] = songs[picked_songs[best_id]].mutate()
+        datasaver.add(cond="after_a_replay", i_night=cur_day, i_replay=i,
+                      i_loser=picked_songs[loser_id],
+                      i_winner=picked_songs[best_id],
+                      songs=songs)
     return songs
 
 
-def mutate_microbial_diversity_continuous(songs, conf, datasaver=None):
+def mutate_microbial_diversity_continuous(songs, conf, i_night=None,
+                                          datasaver=None):
     """microbial genetic algorithm.
     fitness objective: pressure for diversity: maximize the mean metric of
     'distance' from the others songs"""
@@ -159,6 +165,8 @@ def mutate_microbial_diversity_continuous(songs, conf, datasaver=None):
     nb_replay = conf['replay']
     rng = conf['rng_obj']
     mat_neigh_metric = generate_mat_neighbours_metrics(songs)
+    datasaver.add(cond="init_pop", songs=songs,
+                  mat_neigh_metric=mat_neigh_metric)
     for i in range(nb_replay):
         picked_songs = rng.choice(len(songs), size=2, replace=False)
         best_id = np.argmax(np.mean(mat_neigh_metric[picked_songs], axis=1))
@@ -167,10 +175,16 @@ def mutate_microbial_diversity_continuous(songs, conf, datasaver=None):
         mat_neigh_metric = update_mat_neighbours_metrics(mat_neigh_metric,
                                                          picked_songs[loser_id],
                                                          songs)
+        datasaver.add(cond="after_a_replay", i_night=i_night, i_replay=i,
+                      i_loser=picked_songs[loser_id],
+                      i_winner=picked_songs[best_id],
+                      songs=songs,
+                      mat_neigh_metric=mat_neigh_metric)
     return songs
 
 
-def mutate_microbial_diversity_distance(songs, conf, datasaver=None):
+def mutate_microbial_diversity_distance(songs, conf, i_night=None,
+                                        datasaver=None):
     """microbial genetic algorithm.
     fitness objective: pressure for diversity: maximize the mean distance
     from the others songs"""
@@ -180,6 +194,8 @@ def mutate_microbial_diversity_distance(songs, conf, datasaver=None):
     nb_replay = conf['replay']
     rng = conf['rng_obj']
     mat_neigh_dist = generate_mat_neighbours_distances(songs)
+    datasaver.add(cond="init_pop", songs=songs,
+                  mat_neigh_dist=mat_neigh_dist)
     for i in range(nb_replay):
         picked_songs = rng.choice(len(songs), size=2, replace=False)
         best_id = np.argmax(np.mean(mat_neigh_dist[picked_songs], axis=1))
@@ -188,10 +204,16 @@ def mutate_microbial_diversity_distance(songs, conf, datasaver=None):
         mat_neigh_dist = update_mat_neighbours_distances(mat_neigh_dist,
                                                          picked_songs[loser_id],
                                                          songs)
+        datasaver.add(cond="after_a_replay", i_night=i_night, i_replay=i,
+                      i_loser=picked_songs[loser_id],
+                      i_winner=picked_songs[best_id],
+                      songs=songs,
+                      mat_neigh_dist=mat_neigh_dist)
     return songs
 
 
-#def mutate_diversity_multi_criteria(songs, goal, conf, datasaver=None):
+#def mutate_diversity_multi_criteria(songs, goal, conf, i_night=None,
+#                                    datasaver=None):
 #    if datasaver is None:
 #        datasaver = QuietDataSaver()
 #    songs = np.asarray(songs)
@@ -201,6 +223,8 @@ def mutate_microbial_diversity_distance(songs, conf, datasaver=None):
 #    comp = conf['comp_obj']
 #    score_weight, dist_weight = conf.get('criteria_weight', [0.5, 0.5])
 #    mat_neigh_dist = generate_mat_neighbours_distances(songs)
+#    datasaver.add(cond="init_pop", songs=songs,
+#                  mat_neigh_dist=mat_neigh_dist)
 #    for i in range(nb_replay):
 #        picked_songs = rng.choice(len(songs), size=2, replace=False)
 #        scores = get_scores(goal, songs[picked_songs], measure, comp)
@@ -216,6 +240,11 @@ def mutate_microbial_diversity_distance(songs, conf, datasaver=None):
 #        mat_neigh_dist = update_mat_neighbours_distances(mat_neigh_dist,
 #                                                         picked_songs[loser_id],
 #                                                         songs)
+#        datasaver.add(cond="after_a_replay", i_night=i_night, i_replay=i,
+#                      i_loser=picked_songs[loser_id],
+#                      i_winner=picked_songs[best_id],
+#                      songs=songs,
+#                      mat_neigh_dist=mat_neigh_dist)
 #    return songs
 
 
@@ -300,7 +329,8 @@ def mutate_microbial_diversity_uniform(songs, goal, cur_day, nb_day,
     return new_pop
 
 
-def mutate_microbial_diversity_continuous_uniform(songs, conf, datasaver=None):
+def mutate_microbial_diversity_continuous_uniform(songs, conf, i_night=None,
+                                                  datasaver=None):
     """Do a microbial on an extended population and restrict by random.
     The selection in the microbial genetic algotrithm favours
     song which have the biggest mean metric of 'distance'
@@ -308,14 +338,15 @@ def mutate_microbial_diversity_continuous_uniform(songs, conf, datasaver=None):
     datasaver.add(label='night', cond='before_evening', pop=songs)
     new_pop = extend_pop(songs, conf, datasaver)
     datasaver.add(label='night', cond='evening', pop=new_pop)
-    mutate_pop = mutate_microbial_diversity_continuous(new_pop, conf,
+    mutate_pop = mutate_microbial_diversity_continuous(new_pop, conf, i_night,
                                                        datasaver)
     datasaver.add(label='night', cond="before_morning", pop=mutate_pop)
     new_pop = restrict_pop_uniform(mutate_pop, conf, datasaver)
     datasaver.add(label='night', cond='morning', pop=new_pop)
     return new_pop
 
-def mutate_microbial_diversity_distance_uniform(songs, conf, datasaver=None):
+def mutate_microbial_diversity_distance_uniform(songs, conf, i_night=None,
+                                                datasaver=None):
     """Do a microbial on an extended population and restrict by random.
     The selection in the microbial genetic algotrithm favours
     song which have the biggest mean distance
@@ -323,7 +354,7 @@ def mutate_microbial_diversity_distance_uniform(songs, conf, datasaver=None):
     datasaver.add(label='night', cond='before_evening', pop=songs)
     new_pop = extend_pop(songs, conf, datasaver)
     datasaver.add(label='night', cond='evening', pop=new_pop)
-    mutate_pop = mutate_microbial_diversity_distance(new_pop, conf,
+    mutate_pop = mutate_microbial_diversity_distance(new_pop, conf, i_night,
                                                        datasaver)
     datasaver.add(label='night', cond="before_morning", pop=mutate_pop)
     new_pop = restrict_pop_uniform(mutate_pop, conf, datasaver)

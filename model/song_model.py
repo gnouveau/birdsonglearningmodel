@@ -129,8 +129,8 @@ class SongModel:
                     clean = True
             if len(self.song) - gestures[-1][0] < 100:
                 del gestures[-1]
-        return SongModel(self.song, gestures, parent=self,
-                         muta_proba = self.muta_proba)
+        return SongModel(self.song, gestures, rng=self.rng, parent=self,
+                         muta_proba=self.muta_proba)
 
     def gen_sound(self, range_=None, fixed_normalize=True):
         """Generate the full song.
@@ -201,6 +201,11 @@ class SongModel:
         except IndexError:
             end = len(self.song)
         return end
+
+    def clone(self):
+        return SongModel(self.song, gestures=deepcopy(self.gestures),
+                         rng=self.rng, parent=self.parent,
+                         muta_proba=self.muta_proba)
 
     def shift_gesture(self, gesture, new_start):
         """Time shift the start of the gesture.
