@@ -47,7 +47,8 @@ from datasaver import DataSaver, QuietDataSaver
 from day_optimisers import optimise_gesture_dummy, optimise_gesture_padded,\
                            optimise_gesture_whole,\
                            optimise_gesture_whole_local_search,\
-                           optimise_proportional_training
+                           optimise_proportional_training,\
+                           optimise_root_mean_square_error
 from measures import bsa_measure, get_scores, normalize_and_center
 from night_optimisers import mutate_best_models_dummy, \
                              mutate_best_models_elite, \
@@ -71,7 +72,8 @@ DAY_LEARNING_MODELS = {
     'optimise_gesture_padded': optimise_gesture_padded,
     'optimise_gesture_whole': optimise_gesture_whole,
     'optimise_gesture_whole_local_search': optimise_gesture_whole_local_search,
-    'optimise_proportional_training': optimise_proportional_training
+    'optimise_proportional_training': optimise_proportional_training,
+    'optimise_root_mean_square_error': optimise_root_mean_square_error
 }
 """
 Available night learning models for the configuration files
@@ -180,6 +182,7 @@ def fit_song(tutor_song, conf, datasaver=None):
     if cond1 or cond2 or cond3:
         target = goal
     else:
+        # case where conf['dlm'] == 'optimise_root_mean_square_error'
         target = tutor_song
 
     for iday in range(nb_day):

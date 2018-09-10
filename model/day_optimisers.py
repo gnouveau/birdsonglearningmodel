@@ -7,7 +7,8 @@ import numpy as np
 
 from datasaver import QuietDataSaver
 from gesture_fitter import fit_gesture_hill, fit_gesture_padded, \
-                           fit_gesture_whole, fit_gesture_whole_local_search
+                           fit_gesture_whole, fit_gesture_whole_local_search, \
+                           _padded_gen_sound
 from synth import gen_sound, only_sin
 
 logger = logging.getLogger('DayOptim')
@@ -168,6 +169,53 @@ def optimise_gesture_whole_local_search(songs, goal, conf,
     datasaver.add(label='day', cond='after_day_learning',
                   improvement_cpt=improvement_cpt)
     return songs
+
+
+def optimise_root_mean_square_error(songs, tutor_song, conf, 
+                                    datasaver=None, iday=None):
+    """Optimises the gestures so that each sample of the song model
+    is as close as possible to the corresponding sample in the tutor song.
+    Only use the root mean square error and not some features of the song.
+    """
+    comp = conf["comp_obj"]
+    train_per_day = conf["train_per_day"]
+    nb_iter = conf["iter_per_train"]
+    rng = conf["rng_obj"]
+    deviation = np.diag(conf["dev"])
+    
+    if datasaver is None:
+        datasaver = QuietDataSaver()
+    if rng is None:
+        rng = np.random.RandomState()
+
+    for itrain in range(train_per_day):
+        isong = rng.randint(len(songs))
+        song = songs[isong]
+        pre_song = song.clone()
+        ig = rng.randint(len(song.gestures))
+        s = song.gen_sound()
+        pre_score = comp(tutor_song, s)
+        logger.info('{}/{}: fit gesture {} of song {} (length {}, score {})'.format(
+            itrain+1, train_per_day, ig, isong, len(s), pre_score))
+        best_gest = deepcopy(song.gestures[ig][1])
+        best_score = pre_score
+        i = 0
+        while best_score > 0.01 and i < nb_iter:
+            new_gest = rng.multivariate_normal(best_gest, deviation)
+            new_sound = _padded_gen_sound(song, range(0, len(song.gestures)),
+                                         ig, new_gest)
+            new_score = comp(tutor_song, new_sound)
+            if new_score < best_score:
+                best_score = new_score
+                best_gest = new_gest
+            i += 1
+        song.gestures[ig][1] = deepcopy(best_gest)
+        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
+                      pre_score=pre_score, new_score=best_score,
+                      pre_song=pre_song, new_song=song.clone())
+        logger.info("new score {}".format(best_score))
+    return songs
+
 
 def optimise_proportional_training(songs, goal, conf,
                                         datasaver=None, iday=None):
