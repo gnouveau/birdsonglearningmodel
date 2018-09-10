@@ -14,7 +14,7 @@ logger = logging.getLogger('songmodel')
 class SongModel:
     """Song model structure."""
 
-    def __init__(self, song, gestures=None, nb_split=20, rng=None,
+    def __init__(self, song, gestures=None, nb_split=10, rng=None,
                  parent=None, priors=None, muta_proba=None):
         """
         Initialize the song model structure.

@@ -84,7 +84,8 @@ NIGHT_LEARNING_MODELS = {
     'mutate_microbial_extended_uniform': mutate_microbial_extended_uniform,
     'mutate_microbial_diversity_uniform': mutate_microbial_diversity_uniform,
     'mutate_microbial_diversity_continuous_uniform': mutate_microbial_diversity_continuous_uniform,
-    'mutate_microbial_diversity_distance_uniform': mutate_microbial_diversity_distance_uniform
+    'mutate_microbial_diversity_distance_uniform': mutate_microbial_diversity_distance_uniform,
+    'no_night': None
 }
 """
 Available comparison methods for the configuration files
@@ -193,7 +194,9 @@ def fit_song(tutor_song, conf, datasaver=None):
                           songs=songs, scores=score)
             logger.info('z\tz\tz\tNight\tz\tz\tz')
             with datasaver.set_context('night_optim'):
-                if conf['nlm'] == "mutate_microbial_diversity_distance_uniform":
+                if conf['nlm'] == "no_night":
+                    pass
+                elif conf['nlm'] == "mutate_microbial_diversity_distance_uniform":
                     songs = night_optimisation(songs, conf,
                                                datasaver=datasaver)
                 elif conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
