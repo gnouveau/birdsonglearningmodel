@@ -62,13 +62,13 @@ def normalize_and_center(song):
     Initialy implemented to normalize the tutor song
     """
     # Normalization
-    song = np.array(song, dtype=np.double) # to avoid overflowing calculation
-    min_v = song.min()
-    max_v = song.max()
-    song = 2 * (song - min_v) / (max_v - min_v) - 1
+    new_song = np.array(song, dtype=np.double) # to avoid overflowing calculation
+    min_v = new_song.min()
+    max_v = new_song.max()
+    new_song = 2 * (new_song - min_v) / (max_v - min_v) - 1
     # Centered with the mean
-    song = song - song.mean()
-    return song
+    new_song = new_song - new_song.mean()
+    return new_song
 
 
 def genetic_neighbours(songs, all_songs, threshold=2000):

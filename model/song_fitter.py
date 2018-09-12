@@ -360,7 +360,6 @@ def main():
     logger.info(pformat(conf))
 
     conf['rng_obj'] = rng
-#    conf['measure_obj'] = lambda x: bsa_measure(x, bsa.SR, conf['coefs'])
     conf['comp_obj'] = COMP_METHODS[conf['comp']]
 
     #########################################
