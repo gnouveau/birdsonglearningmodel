@@ -317,49 +317,49 @@ def mutate_microbial_extended_uniform(songs, goal, conf, datasaver=None):
 
 
 def mutate_microbial_diversity_uniform(songs, goal, cur_day, nb_day,
-                                       conf, datasaver=None):
+                                       conf, datasavers=None):
     """Do a microbial on an extended population and restrict by random.
     The selection in the microbial genetic algorithm penalize
     songs which have more neighbours"""
-    datasaver.add(label='night', cond='before_evening', pop=songs)
-    new_pop = extend_pop(songs, conf, datasaver)
-    datasaver.add(label='night', cond='evening', pop=new_pop)
+    datasavers["standard"].add(label='night', cond='before_evening', pop=songs)
+    new_pop = extend_pop(songs, conf, datasavers["standard"])
+    datasavers["standard"].add(label='night', cond='evening', pop=new_pop)
     mutate_pop = mutate_microbial_diversity(new_pop, goal, cur_day,
-                                            nb_day, conf, datasaver)
-    datasaver.add(label='night', cond="before_morning", pop=mutate_pop)
-    new_pop = restrict_pop_uniform(mutate_pop, conf, datasaver)
-    datasaver.add(label='night', cond='morning', pop=new_pop)
+                                            nb_day, conf, datasavers["night"])
+    datasavers["standard"].add(label='night', cond="before_morning", pop=mutate_pop)
+    new_pop = restrict_pop_uniform(mutate_pop, conf, datasavers["standard"])
+    datasavers["standard"].add(label='night', cond='morning', pop=new_pop)
     return new_pop
 
 
 def mutate_microbial_diversity_continuous_uniform(songs, conf, i_night=None,
-                                                  datasaver=None):
+                                                  datasavers=None):
     """Do a microbial on an extended population and restrict by random.
     The selection in the microbial genetic algotrithm favours
     song which have the biggest mean metric of 'distance'
     from the others songs"""
-    datasaver.add(label='night', cond='before_evening', pop=songs)
-    new_pop = extend_pop(songs, conf, datasaver)
-    datasaver.add(label='night', cond='evening', pop=new_pop)
+    datasavers["standard"].add(label='night', cond='before_evening', pop=songs)
+    new_pop = extend_pop(songs, conf, datasavers["standard"])
+    datasavers["standard"].add(label='night', cond='evening', pop=new_pop)
     mutate_pop = mutate_microbial_diversity_continuous(new_pop, conf, i_night,
-                                                       datasaver)
-    datasaver.add(label='night', cond="before_morning", pop=mutate_pop)
-    new_pop = restrict_pop_uniform(mutate_pop, conf, datasaver)
-    datasaver.add(label='night', cond='morning', pop=new_pop)
+                                                       datasavers["night"])
+    datasavers["standard"].add(label='night', cond="before_morning", pop=mutate_pop)
+    new_pop = restrict_pop_uniform(mutate_pop, conf, datasavers["standard"])
+    datasavers["standard"].add(label='night', cond='morning', pop=new_pop)
     return new_pop
 
 def mutate_microbial_diversity_distance_uniform(songs, conf, i_night=None,
-                                                datasaver=None):
+                                                datasavers=None):
     """Do a microbial on an extended population and restrict by random.
     The selection in the microbial genetic algotrithm favours
     song which have the biggest mean distance
     from the others songs"""
-    datasaver.add(label='night', cond='before_evening', pop=songs)
-    new_pop = extend_pop(songs, conf, datasaver)
-    datasaver.add(label='night', cond='evening', pop=new_pop)
+    datasavers["standard"].add(label='night', cond='before_evening', pop=songs)
+    new_pop = extend_pop(songs, conf, datasavers["standard"])
+    datasavers["standard"].add(label='night', cond='evening', pop=new_pop)
     mutate_pop = mutate_microbial_diversity_distance(new_pop, conf, i_night,
-                                                       datasaver)
-    datasaver.add(label='night', cond="before_morning", pop=mutate_pop)
-    new_pop = restrict_pop_uniform(mutate_pop, conf, datasaver)
-    datasaver.add(label='night', cond='morning', pop=new_pop)
+                                                       datasavers["night"])
+    datasavers["standard"].add(label='night', cond="before_morning", pop=mutate_pop)
+    new_pop = restrict_pop_uniform(mutate_pop, conf, datasavers["standard"])
+    datasavers["standard"].add(label='night', cond='morning', pop=new_pop)
     return new_pop

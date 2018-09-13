@@ -68,12 +68,17 @@ def start_run(run_name, conf, res_grid_path):
         run_path = join(res_grid_path, run_name)
         os.makedirs(run_path)
         shutil.copyfile(conf['tutor'], join(run_path, 'tutor.wav'))
-        datasaver = DataSaver(join(run_path, 'data_cur.pkl'))
+        datasavers = {}
+        datasavers["standard"] = DataSaver(join(run_path, 'data_cur.pkl'))
+        datasavers["day"] = DataSaver(join(run_path, 'data_day_cur.pkl'))
+        datasavers["night"] = DataSaver(join(run_path, 'data_night_cur.pkl'))
         with open(join(run_path, 'conf.json'), 'w') as conf_file:
             json.dump({key: conf[key] for key in conf
                        if not key.endswith('obj')}, conf_file, indent=4)
-        fit_song(tutor, conf, datasaver)
-        datasaver.write(join(run_path, 'data.pkl'))
+        fit_song(tutor, conf, datasavers)
+        datasavers["standard"].write(join(run_path, 'data.pkl'))
+        datasavers["day"].write(join(run_path, 'data_day.pkl'))
+        datasavers["night"].write(join(run_path, 'data_night.pkl'))
         print(run_name, 'is over and took', datetime.datetime.now() - start)
         print('By the way, it is {}'.format(
             datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))

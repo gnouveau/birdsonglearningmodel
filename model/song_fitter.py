@@ -96,7 +96,7 @@ Available comparison methods for the configuration files
 COMP_METHODS = {'linalg': lambda g, c: np.linalg.norm(g - c),
                 'fastdtw': lambda g, c: fastdtw(g, c, dist=2, radius=1)[0]}
 
-def fit_song(tutor_song, conf, datasaver=None):
+def fit_song(tutor_song, conf, datasavers=None):
     """Fit a song with a day and a night phase.
 
     This function returns a list of SongModel.
@@ -171,9 +171,12 @@ def fit_song(tutor_song, conf, datasaver=None):
     
     goal = measure(tutor_song)
     
-    if datasaver is None:
-        datasaver = QuietDataSaver()
-    datasaver.add(moment='Start', songs=songs,
+    if datasavers is None:
+        datasavers = {}
+        datasavers["standard"] = QuietDataSaver()
+        datasavers["day"] = QuietDataSaver()
+        datasavers["night"] = QuietDataSaver()
+    datasavers["standard"].add(moment='Start', songs=songs,
                   scores=get_scores(goal, songs, measure, comp))
 
     cond1 = conf['dlm'] == 'optimise_gesture_whole'
@@ -187,38 +190,41 @@ def fit_song(tutor_song, conf, datasaver=None):
 
     for iday in range(nb_day):
         logger.info('*\t*\t*\tDay {} of {}\t*\t*\t*'.format(iday+1, nb_day))
-        with datasaver.set_context('day_optim'):
+        with datasavers["day"].set_context('day_optim'):
             songs = day_optimisation(songs, target, conf,
-                                     datasaver=datasaver, iday=iday)
+                                     datasaver=datasavers["day"], iday=iday)
         score = get_scores(goal, songs, measure, comp)
         if iday + 1 != nb_day:
             logger.debug(score)
-            datasaver.add(moment='before_night',
+            datasavers["standard"].add(moment='before_night',
                           songs=songs, scores=score)
             logger.info('z\tz\tz\tNight\tz\tz\tz')
-            with datasaver.set_context('night_optim'):
-                if conf['nlm'] == "no_night":
-                    pass
-                elif conf['nlm'] == "mutate_microbial_diversity_distance_uniform":
-                    songs = night_optimisation(songs, conf, i_night=iday,
-                                               datasaver=datasaver)
-                elif conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
-                    songs = night_optimisation(songs, conf, i_night=iday,
-                                               datasaver=datasaver)
-                elif conf['nlm'] == "mutate_microbial_diversity_uniform":
-                    songs = night_optimisation(songs,
-                                               goal, iday, nb_day, conf, 
-                                               datasaver=datasaver)
-                else:
-                    songs = night_optimisation(songs,
-                                               goal,
-                                               conf, 
-                                               datasaver=datasaver)
+            with datasavers["standard"].set_context('night_optim'):
+                with datasavers["night"].set_context('replay'):
+                    if conf['nlm'] == "no_night":
+                        pass
+                    elif conf['nlm'] == "mutate_microbial_diversity_distance_uniform":
+                        songs = night_optimisation(songs, conf, i_night=iday,
+                                                   datasavers=datasavers)
+                    elif conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
+                        songs = night_optimisation(songs, conf, i_night=iday,
+                                                   datasavers=datasavers)
+                    elif conf['nlm'] == "mutate_microbial_diversity_uniform":
+                        songs = night_optimisation(songs,
+                                                   goal, iday, nb_day, conf,
+                                                   datasavers=datasavers)
+                    else:
+                        songs = night_optimisation(songs,
+                                                   goal,
+                                                   conf,
+                                                   datasaver=datasavers["standard"])
             score = get_scores(goal, songs, measure, comp)
-            datasaver.add(moment='after_night', songs=songs, scores=score)
-        datasaver.write()
-    datasaver.add(moment='End', songs=songs,
-                  scores=get_scores(goal, songs, measure, comp))
+            datasavers["standard"].add(moment='after_night', songs=songs, scores=score)
+        datasavers["standard"].write()
+        datasavers["day"].write()
+        datasavers["night"].write()
+    datasavers["standard"].add(moment='End', songs=songs,
+                               scores=get_scores(goal, songs, measure, comp))
     return songs
 
 
@@ -356,7 +362,10 @@ def main():
         with open(os.path.join(path, 'conf.json'), 'r') as f:
             conf = json.load(f)
 
-    datasaver = DataSaver(defaultdest=os.path.join(path, 'data_cur.pkl'))
+    datasavers = {}
+    datasavers["standard"] = DataSaver(os.path.join(path, 'data_cur.pkl'))
+    datasavers["day"] = DataSaver(os.path.join(path, 'data_day_cur.pkl'))
+    datasavers["night"] = DataSaver(os.path.join(path, 'data_night_cur.pkl'))
     logger.info(pformat(conf))
 
     conf['rng_obj'] = rng
@@ -366,14 +375,16 @@ def main():
     # STOP READING CONF; START THE LEARNING #
     #########################################
     try:
-        fit_song(tsong, conf, datasaver=datasaver)
+        fit_song(tsong, conf, datasavers=datasavers)
     except KeyboardInterrupt:
         logger.warning('Aborted')
         with open(os.path.join(path, 'aborted.txt'), 'a') as f:
             f.write('aborted\n')
     finally:
         logger.info('Saving the data.')
-        datasaver.write(os.path.join(path, 'data.pkl'))
+        datasavers["standard"].write(os.path.join(path, 'data.pkl'))
+        datasavers["day"].write(os.path.join(path, 'data_day.pkl'))
+        datasavers["night"].write(os.path.join(path, 'data_night.pkl'))
     logger.info('!!!! Learning over !!!!')
     try:
         subprocess.Popen(['notify-send',
