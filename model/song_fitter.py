@@ -162,7 +162,7 @@ def fit_song(tutor_song, conf, datasavers=None):
     comp = conf['comp_obj']
     rng = conf['rng_obj']
     nb_split = conf.get('split', 10)
-    # muta_proba is a list of 4 values: [P(deletion), P(division), P(movement), P(no_mutation)]
+    # muta_proba is a list of 3 values: [P(deletion), P(division), P(movement)]
     muta_proba = conf['muta_proba']
 
     songs = [SongModel(song=tutor_song, priors=conf['prior'],

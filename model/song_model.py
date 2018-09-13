@@ -14,6 +14,7 @@ logger = logging.getLogger('songmodel')
 class SongModel:
     """Song model structure."""
 
+
     def __init__(self, song, gestures=None, nb_split=10, rng=None,
                  parent=None, priors=None, muta_proba=None):
         """
@@ -55,9 +56,9 @@ class SongModel:
         if muta_proba is None:
             string = 'Have to define the probabilities of deletion, division and movement'
             raise Exception(string)
-        if len(muta_proba) != 4:
-            string = 'The list of mutation probabilities has to have 4 values: '
-            string += 'P(deletion), P(division), P(movement) and P(no_mutation)'
+        if len(muta_proba) != 3:
+            string = 'The list of mutation probabilities has to have 3 values: '
+            string += 'P(deletion), P(division) and P(movement)'
             raise Exception(string)
         if sum(muta_proba) != 1:
             raise Exception('Sum of probabilites is not equal to 1 ({})'.format(muta_proba))
@@ -93,7 +94,7 @@ class SongModel:
                 logger.info('split')
                 new_gesture = self.shift_gesture(gestures[add_after], add_at)
                 gestures.insert(add_after + 1, new_gesture)
-            elif act <= self.cum_sum_proba[2]:  # change the gesture's start
+            else:  # change the gesture's start
                 logger.info('moved')
                 to_move = self.rng.randint(1, len(gestures))
                 min_pos = gestures[to_move - 1][0] + 100
@@ -112,9 +113,6 @@ class SongModel:
                         continue
                     new_pos = int(new_pos)
                     gestures[to_move] = self.shift_gesture(gestures[to_move], new_pos)
-            else:  # Do not mutate
-                logger.info('no mutation')
-                pass
             # clean GTEs
             gestures.sort(key=lambda x: x[0])
             clean = False
@@ -132,6 +130,7 @@ class SongModel:
         return SongModel(self.song, gestures, rng=self.rng, parent=self,
                          muta_proba=self.muta_proba)
 
+
     def gen_sound(self, range_=None, fixed_normalize=True):
         """Generate the full song.
         
@@ -146,6 +145,7 @@ class SongModel:
             expected_len = len(self.song)
         assert len(out) == expected_len
         return out
+
 
     def gen_alphabeta(self, range_=None, pad=False):
         """Compute alpha and beta for the whole song."""
@@ -202,10 +202,12 @@ class SongModel:
             end = len(self.song)
         return end
 
+
     def clone(self):
         return SongModel(self.song, gestures=deepcopy(self.gestures),
                          rng=self.rng, parent=self.parent,
                          muta_proba=self.muta_proba)
+
 
     def shift_gesture(self, gesture, new_start):
         """Time shift the start of the gesture.
@@ -232,6 +234,7 @@ class SongModel:
         ab_param[15] = g[15] + 2 * np.pi * t * g[16]
 
         return [new_start, ab_param]
+
 
     def mutate_test(self, n=1, to_move=None, new_pos=None):
         """Give a new song model with new GTEs.
