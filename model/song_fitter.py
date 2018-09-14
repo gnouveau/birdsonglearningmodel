@@ -193,6 +193,7 @@ def fit_song(tutor_song, conf, datasavers=None):
         with datasavers["day"].set_context('day_optim'):
             songs = day_optimisation(songs, target, conf,
                                      datasaver=datasavers["day"], iday=iday)
+        datasavers["day"].flush()  # Write the data in several times, otherwise it is too big and cause MemoryError. It means it has to be extract from the pickle file differently
         score = get_scores(goal, songs, measure, comp)
         if iday + 1 != nb_day:
             logger.debug(score)
@@ -219,10 +220,9 @@ def fit_song(tutor_song, conf, datasavers=None):
                                                    conf,
                                                    datasaver=datasavers["standard"])
             score = get_scores(goal, songs, measure, comp)
+            datasavers["night"].flush()  # Write the data in several times, otherwise it is too big and cause MemoryError. It means it has to be extract from the pickle file differently
             datasavers["standard"].add(moment='after_night', songs=songs, scores=score)
-        datasavers["standard"].write()
-        datasavers["day"].write()
-        datasavers["night"].write()
+        datasavers["standard"].write()         
     datasavers["standard"].add(moment='End', songs=songs,
                                scores=get_scores(goal, songs, measure, comp))
     return songs
@@ -383,8 +383,12 @@ def main():
     finally:
         logger.info('Saving the data.')
         datasavers["standard"].write(os.path.join(path, 'data.pkl'))
-        datasavers["day"].write(os.path.join(path, 'data_day.pkl'))
-        datasavers["night"].write(os.path.join(path, 'data_night.pkl'))
+        # back-ups are done, rename the files
+        subprocess.run(["rm", os.path.join(path, 'data_cur.pkl')])
+        subprocess.run(["mv", os.path.join(path, 'data_day_cur.pkl'),
+                        os.path.join(path, 'data_day.pkl')])
+        subprocess.run(["mv", os.path.join(path, 'data_night_cur.pkl'),
+                        os.path.join(path, 'data_night.pkl')])
     logger.info('!!!! Learning over !!!!')
     try:
         subprocess.Popen(['notify-send',
