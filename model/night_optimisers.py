@@ -130,7 +130,6 @@ def mutate_microbial_diversity(songs, goal, cur_day, nb_day,
 #    diversity_decay = conf.get('decay', None)
 #    if diversity_decay == 'linear':
 #        diversity_weight = diversity_weight * (1 - (cur_day / (nb_day - 1)))
-    datasaver.add(cond="init_pop", songs=songs)
     for i in range(nb_replay):
         picked_songs = rng.choice(len(songs), size=2, replace=False)
         scores = get_scores(goal, songs[picked_songs], measure, comp)
@@ -144,14 +143,8 @@ def mutate_microbial_diversity(songs, goal, cur_day, nb_day,
 #                         * (nb_gestures**bloat_weight))
         
         best_id = np.argmin(scores * (nb_similar**diversity_weight))
-        
         loser_id = 1 - best_id  # if best_id == 0: loser_id = 1, else: loser_id = 0
-        new_song = songs[picked_songs[best_id]].mutate()
-        songs[picked_songs[loser_id]] = new_song
-        datasaver.add(cond="after_a_replay", i_night=cur_day, i_replay=i,
-                      i_loser=picked_songs[loser_id],
-                      i_winner=picked_songs[best_id],
-                      new_song=new_song)
+        songs[picked_songs[loser_id]] = songs[picked_songs[best_id]].mutate()
     return songs
 
 
@@ -166,8 +159,8 @@ def mutate_microbial_diversity_continuous(songs, conf, i_night=None,
     nb_replay = conf['replay']
     rng = conf['rng_obj']
     mat_neigh_metric = generate_mat_neighbours_metrics(songs)
-    datasaver.add(cond="init_pop", songs=songs,
-                  mat_neigh_metric=mat_neigh_metric)
+#    datasaver.add(cond="init_mat_neigh_metric",
+#                  mat_neigh_metric=mat_neigh_metric)
     for i in range(nb_replay):
         picked_songs = rng.choice(len(songs), size=2, replace=False)
         best_id = np.argmax(np.mean(mat_neigh_metric[picked_songs], axis=1))
@@ -177,11 +170,10 @@ def mutate_microbial_diversity_continuous(songs, conf, i_night=None,
         mat_neigh_metric = update_mat_neighbours_metrics(mat_neigh_metric,
                                                          picked_songs[loser_id],
                                                          songs)
-        datasaver.add(cond="after_a_replay", i_night=i_night, i_replay=i,
-                      i_loser=picked_songs[loser_id],
-                      i_winner=picked_songs[best_id],
-                      new_song=new_song,
-                      mat_neigh_metric=mat_neigh_metric)
+#        datasaver.add(cond="after_a_replay", i_night=i_night, i_replay=i,
+#                      i_loser=picked_songs[loser_id],
+#                      i_winner=picked_songs[best_id],
+#                      mat_neigh_metric=mat_neigh_metric)
     return songs
 
 
@@ -196,8 +188,8 @@ def mutate_microbial_diversity_distance(songs, conf, i_night=None,
     nb_replay = conf['replay']
     rng = conf['rng_obj']
     mat_neigh_dist = generate_mat_neighbours_distances(songs)
-    datasaver.add(cond="init_pop", songs=songs,
-                  mat_neigh_dist=mat_neigh_dist)
+#    datasaver.add(cond="init_mat_neigh_dist",
+#                  mat_neigh_dist=mat_neigh_dist)
     for i in range(nb_replay):
         picked_songs = rng.choice(len(songs), size=2, replace=False)
         best_id = np.argmax(np.mean(mat_neigh_dist[picked_songs], axis=1))
@@ -207,11 +199,10 @@ def mutate_microbial_diversity_distance(songs, conf, i_night=None,
         mat_neigh_dist = update_mat_neighbours_distances(mat_neigh_dist,
                                                          picked_songs[loser_id],
                                                          songs)
-        datasaver.add(cond="after_a_replay", i_night=i_night, i_replay=i,
-                      i_loser=picked_songs[loser_id],
-                      i_winner=picked_songs[best_id],
-                      new_song=new_song,
-                      mat_neigh_dist=mat_neigh_dist)
+#        datasaver.add(cond="after_a_replay", i_night=i_night, i_replay=i,
+#                      i_loser=picked_songs[loser_id],
+#                      i_winner=picked_songs[best_id],
+#                      mat_neigh_dist=mat_neigh_dist)
     return songs
 
 
@@ -243,11 +234,6 @@ def mutate_microbial_diversity_distance(songs, conf, i_night=None,
 #        mat_neigh_dist = update_mat_neighbours_distances(mat_neigh_dist,
 #                                                         picked_songs[loser_id],
 #                                                         songs)
-#        datasaver.add(cond="after_a_replay", i_night=i_night, i_replay=i,
-#                      i_loser=picked_songs[loser_id],
-#                      i_winner=picked_songs[best_id],
-#                      songs=songs,
-#                      mat_neigh_dist=mat_neigh_dist)
 #    return songs
 
 

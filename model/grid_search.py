@@ -75,10 +75,16 @@ def start_run(run_name, conf, res_grid_path):
         with open(join(run_path, 'conf.json'), 'w') as conf_file:
             json.dump({key: conf[key] for key in conf
                        if not key.endswith('obj')}, conf_file, indent=4)
+        # begin simulation
         fit_song(tutor, conf, datasavers)
+        # end simulation
+        # rename and remove tempory files to only keep final files
         datasavers["standard"].write(join(run_path, 'data.pkl'))
-        datasavers["day"].write(join(run_path, 'data_day.pkl'))
-        datasavers["night"].write(join(run_path, 'data_night.pkl'))
+        subprocess.run(["rm", join(run_path, 'data_cur.pkl')])
+        subprocess.run(["mv", join(run_path, "data_day_cur.pkl"),
+                        join(run_path, "data_day.pkl")])
+        subprocess.run(["mv", join(run_path, "data_night_cur.pkl"),
+                        join(run_path, "data_night.pkl")])
         print(run_name, 'is over and took', datetime.datetime.now() - start)
         print('By the way, it is {}'.format(
             datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))

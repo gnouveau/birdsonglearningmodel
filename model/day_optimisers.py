@@ -147,7 +147,6 @@ def optimise_gesture_whole_local_search(songs, goal, conf,
     for itrain in range(train_per_day):
         isong = rng.randint(len(songs))
         song = songs[isong]
-        pre_song = song.clone()
         ig = rng.randint(len(song.gestures))
         s = song.gen_sound()
         c = measure(s)
@@ -157,10 +156,8 @@ def optimise_gesture_whole_local_search(songs, goal, conf,
         res, hill_score = fit_gesture_whole_local_search(
             goal, song, ig, conf)
         songs[isong].gestures[ig][1] = deepcopy(res)
-        new_song = songs[isong].clone()
-        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
-                      pre_score=pre_score, new_score=hill_score,
-                      pre_song=pre_song, new_song=new_song)
+#        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
+#                      pre_score=pre_score, new_score=hill_score)  # too much verbose
         logger.info('new score {}'.format(hill_score))
         assert pre_score >= hill_score, "{} >= {} est faux".format(
             pre_score, hill_score)
@@ -191,7 +188,6 @@ def optimise_root_mean_square_error(songs, tutor_song, conf,
     for itrain in range(train_per_day):
         isong = rng.randint(len(songs))
         song = songs[isong]
-        pre_song = song.clone()
         ig = rng.randint(len(song.gestures))
         s = song.gen_sound()
         pre_score = comp(tutor_song, s)
@@ -210,9 +206,8 @@ def optimise_root_mean_square_error(songs, tutor_song, conf,
                 best_gest = new_gest
             i += 1
         song.gestures[ig][1] = deepcopy(best_gest)
-        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
-                      pre_score=pre_score, new_score=best_score,
-                      pre_song=pre_song, new_song=song.clone())
+#        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
+#                      pre_score=pre_score, new_score=best_score)  # too much verbose
         logger.info("new score {}".format(best_score))
     return songs
 
@@ -244,7 +239,6 @@ def optimise_proportional_training(songs, goal, conf,
     for itrain in range(train_per_day):
         isong = rng.randint(len(songs))
         song = songs[isong]
-        pre_song = song.clone()
         ig = rng.randint(len(song.gestures))
         s = song.gen_sound()
         c = measure(s)
@@ -254,10 +248,8 @@ def optimise_proportional_training(songs, goal, conf,
         res, hill_score = fit_gesture_whole_local_search(
             goal, song, ig, conf)
         songs[isong].gestures[ig][1] = deepcopy(res)
-        new_song = songs[isong].clone()
-        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
-                      pre_score=pre_score, new_score=hill_score,
-                      pre_song=pre_song, new_song=new_song)
+#        datasaver.add(iday=iday, itrain=itrain, isong=isong, ig=ig,
+#                      pre_score=pre_score, new_score=hill_score)  # too much verbose
         logger.info('new score {}'.format(hill_score))
         assert pre_score >= hill_score, "{} >= {} est faux".format(
             pre_score, hill_score)
