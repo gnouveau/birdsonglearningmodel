@@ -244,8 +244,10 @@ def extend_pop(songs, conf, datasaver=None):
     new_pop_size = conf['night_concurrent']
     rng = conf['rng_obj']
     songs = np.asarray(songs)
-    night_pop = rng.choice(songs, size=new_pop_size, replace=True)
+    size_pop_to_add = new_pop_size - len(songs)
+    night_pop = rng.choice(songs, size=size_pop_to_add, replace=True)
     night_pop = np.array([song.mutate() for song in night_pop])
+    night_pop = np.concatenate((songs, night_pop))
     return night_pop
 
 
