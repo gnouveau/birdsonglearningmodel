@@ -79,7 +79,7 @@ class SongModel:
                 to_del = self.rng.randint(len(gestures))
                 del gestures[to_del]
                 if to_del == 0:  # if the first gesture is suppressed
-                    gestures[0][0] = 0  # the new one has to start at 0
+                    gestures[0] = self.shift_gesture(gestures[0], 0)  # the new one has to start at 0
             elif act <= self.cum_sum_proba[1]:  # split one gesture into two. Create a new gesture
                 add_after = self.rng.randint(len(gestures) - 1)
                 try:

@@ -204,15 +204,18 @@ def fit_song(tutor_song, conf, datasavers=None):
                 with datasavers["night"].set_context('replay'):
                     if conf['nlm'] == "no_night":
                         pass
-                    elif conf['nlm'] == "mutate_microbial_diversity_distance_uniform":
-                        songs = night_optimisation(songs, conf, i_night=iday,
-                                                   datasavers=datasavers)
-                    elif conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
-                        songs = night_optimisation(songs, conf, i_night=iday,
-                                                   datasavers=datasavers)
+                    # kind of "multi objective diversity" by minimising the number of neighbours of a song and also keep good song with low error distance
                     elif conf['nlm'] == "mutate_microbial_diversity_uniform":
                         songs = night_optimisation(songs,
                                                    goal, iday, nb_day, conf,
+                                                   datasavers=datasavers)
+                    # only diversity by maximising the metric between songs, metric not symmetric
+                    elif conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
+                        songs = night_optimisation(songs, conf, i_night=iday,
+                                                   datasavers=datasavers)
+                    # only diversity by maximising the distance between songs, using a symmetrical distance
+                    elif conf['nlm'] == "mutate_microbial_diversity_distance_uniform":
+                        songs = night_optimisation(songs, conf, i_night=iday,
                                                    datasavers=datasavers)
                     else:
                         songs = night_optimisation(songs,
