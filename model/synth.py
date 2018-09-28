@@ -107,13 +107,15 @@ def gen_alphabeta(params, length, falpha, fbeta,
         
     alpha_beta[:, 0] = np.where(alpha_beta[:, 0] < 0, 0, alpha_beta[:, 0])
     # Force Beta to only have negative values
-    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > 0, 0, alpha_beta[:, 1])
     """
-    To test: maximum beta value = -0.002.
+    Maximum beta value should be  -0.002 instead of 0
     Because in the beta produced with Boari's method, outside silence periods,
     the maximum beta value is -0.002 and not 0 (cf. article)
+    Careful though, if you want to reproduce older simulations
+    which used max beta = 0 (check in the desc.md file)
     """
-#    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > -0.002, -0.002, alpha_beta[:, 1])
+#    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > 0, 0, alpha_beta[:, 1])
+    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > -0.002, -0.002, alpha_beta[:, 1])
     return alpha_beta
 
 
