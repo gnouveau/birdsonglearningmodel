@@ -80,8 +80,10 @@ def draw_learning_curve(rd, ax=None):
     # multiply by -1 to have an ascending curve
     # multiple plots
 #    score_array = -1 * np.array([list(a) for a in rd['scores']]).T
-    # single plot
-    score_array = -1 * np.array([np.amin(scores) for scores in rd['scores']])
+    # single plot (min)
+#    score_array = -1 * np.array([np.amin(scores) for scores in rd['scores']])
+    # single plot (mean)
+    score_array = -1 * np.array([np.mean(scores) for scores in rd['scores']])
     if ax is None:
         fig = plt.figure(figsize=(16, 5))
         ax = fig.gca()
@@ -91,13 +93,14 @@ def draw_learning_curve(rd, ax=None):
 #    for scores in score_array:
 #        plt.plot(scores)
     # single plot
-    plt.plot(score_array)
-    ax.set_xticks(range(0, len(rd['scores']), 20))
-    ax.set_xticklabels(range(0, len(rd['scores'])//2, 10))
+    plt.plot(score_array, label="Chant appris", color='C1')
+    ax.set_xticks(range(0, len(rd['scores']), 10))
+    ax.set_xticklabels(range(0, len(rd['scores'])//2, 5))
     ax.set_xlim(0, len(rd['scores']))
-    ax.set_ylabel('Error distance from tutor')
-    ax.set_xlabel('Day')
-    ax.set_title('Learning curve')
+    ax.set_ylim(-20, -5)
+    ax.set_ylabel('Opposé de la distance d\'erreur')
+    ax.set_xlabel('Jour')
+    ax.set_title('Courbe d\'apprentissage')
     return ax
 
 
@@ -163,10 +166,10 @@ class GridAnalyser:
                 self.tutor_audio(i),
                 self.audio(i, -1, best),
                 self.configuration(i),
-                self.learning_curve(i, rescaling), # calculate error score for Boari song
-                self.spec_deriv_plot(i, 0, best), # initial spec deriv
-                self.spec_deriv_plot(i, mid_i, best), # spec deriv at the middle of the simulation
-                self.spec_deriv_plot(i, -1, best), # spec deriv at the last day
+                self.learning_curve(i, rescaling),  # calculate error score for Boari song
+#                self.spec_deriv_plot(i, 0, best),  # initial spec deriv
+#                self.spec_deriv_plot(i, mid_i, best),  # spec deriv at the middle of the simulation
+                self.spec_deriv_plot(i, -1, best),  # spec deriv at the last day
                 self.tutor_spec_plot(i),
                 self.synth_spec(i),
                 self.song_model_sound_wave(i, -1, best),
