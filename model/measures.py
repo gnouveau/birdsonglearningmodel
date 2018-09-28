@@ -87,6 +87,8 @@ def genetic_neighbours(songs, all_songs, threshold=2000):
                 continue
             other_gest = [gesture[0] for gesture in other_song.gestures]
             gest_metric = neighbours_metric(own_gest, other_gest)
+            # Possible test: neighbours_distance instead of neighbours_metric()
+#            gest_metric = neighbours_distance(own_gest, other_gest)
             if gest_metric < threshold:
                 nb_close += 1
         neighbours[i_ref] = nb_close
