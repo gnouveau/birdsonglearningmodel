@@ -1,0 +1,23 @@
+{
+	"name": "nlm_diversity_14",
+	"tutor": "../data/boari_short.wav",
+	"coefs": {"fm": 1, "am": 1, "entropy": 1, "goodness": 1,
+               "amplitude": 1, "pitch": 0, "rms": 1},
+	"comp": "linalg",
+	"concurrent": 3,
+	"days": 60,
+	"train_multiplier": 4,
+	"iter_per_train": 20,
+	"night_concurrent": 10,
+	"replay": 100,
+	"dlm": "optimise_proportional_training",
+	"nlm": "mutate_microbial_diversity_distance_uniform",
+	"dev": [
+	0.01,   0.01,   0.01,  5,
+	0.005,  0.005,  0.01,  10,
+	0.0005, 0.0005, 0.01, 50,
+	0.05,
+	0.02, 0.02, 0.01, 5, 0.001
+	],
+	"muta_proba": [0.1, 0.1, 0.75, 0.05]
+}

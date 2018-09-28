@@ -1,0 +1,29 @@
+{
+	"name": "nlm_diversity_9",
+	"tutor": "../data/boari_short.wav",
+	"coefs": {"fm": 1, "am": 1, "entropy": 1, "goodness": 1,
+               "amplitude": 1, "pitch": 0, "rms": 1},
+	"comp": "linalg",
+	"concurrent": 3,
+	"days": 60,
+	"train_per_day": 200,
+	"iter_per_train": 20,
+	"night_concurrent": 10,
+	"replay": 100,
+	"dlm": "optimise_gesture_whole_local_search",
+	"nlm": "mutate_microbial_diversity_continuous_uniform",
+	"prior": [
+	0, 0, 3.141592653589793, 50,
+	0, 0, 0.39269908169872414, 500,
+	0, 0, 0, 5000,
+	2,
+	0, 0, 0, 0, -0.15
+	],
+	"dev": [
+	0.01,   0.01,   0.01,  5,
+	0.005,  0.005,  0.01,  10,
+	0.0005, 0.0005, 0.01, 50,
+	0.05,
+	0.02, 0.02, 0.01, 5, 0.001
+	]
+}
