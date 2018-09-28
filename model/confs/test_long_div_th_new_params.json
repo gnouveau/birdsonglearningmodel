@@ -1,0 +1,32 @@
+{
+	"name": "test_long_div_th_new_params",
+	"tutor": "../data/boari_short.wav",
+	"seed": 0,
+	"train_per_day": 200,
+	"iter_per_train": 20,
+	"comp": "linalg",
+	"coefs": {"fm": 1, "am": 1, "entropy": 1, "goodness": 1,
+				"amplitude": 1, "pitch": 0, "rms": 1},
+	"replay": 200,
+	"night_concurrent": 20,
+	"concurrent": 3,
+	"days": 60,
+	"dlm": "optimise_gesture_whole_local_search",
+	"nlm": "mutate_microbial_diversity_uniform",
+	"diversity_threshold": 3500,
+	"prior": [
+	0, 0, 3.141592653589793, 50,
+	0, 0, 0.39269908169872414, 500,
+	0, 0, 0, 5000,
+	0.2,
+	0, 0, 0, 0, -0.15
+	],
+	"dev": [
+	0.01,   0.01,   0.01,  5,
+	0.005,  0.005,  0.01,  10,
+	0.0005, 0.0005, 0.01, 50,
+	0.05,
+	0.02, 0.02, 0.01, 5, 0.001
+	],
+	"muta_proba": [0.1, 0.1, 0.8]
+}

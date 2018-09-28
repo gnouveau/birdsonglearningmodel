@@ -1,0 +1,5 @@
+{
+  "name": "default_coef_0p",
+  "coefs": {"fm": 1, "am": 1, "entropy": 1, "goodness": 1,
+               "amplitude": 1, "pitch": 0}
+}
