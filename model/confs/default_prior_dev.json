@@ -1,0 +1,29 @@
+{
+  "#comment": [
+  "def of sin param : (a * t + b) * sin(phase + 2 * pi * t * f)",
+  "Format of each list",
+  "```",
+  "#alpha",
+  "a, b, phase, f  #sin 1",
+  "a, b, phase, f  #sin 2",
+  "a, b, phase, f  #sin 3",
+  "cst",
+  "#beta",
+  "a, b, phase, f, cst",
+  "```",
+  "really ugly way to comment in json, sorry."],
+  "prior": [
+    0, 0, 3.141592653589793, 15,
+    0, 0, 0.39269908169872414, 45,
+    0, 0, 0, 5000,
+    0.0,
+    0, 0, 0, 0, -0.15
+  ],
+  "dev": [
+    0.1,   0.1,   0.05,  1,
+    0.05,  0.05,  0.05,  1,
+    0.001, 0.001, 0.005, 100,
+    0.2,
+    0.05, 0.01, 0.05, 1, 0.005
+  ]
+}

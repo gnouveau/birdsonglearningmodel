@@ -1,0 +1,29 @@
+Paramètres pour le lancement d’une simulation :
+-----------------------------------------------
+name
+tutor
+seed
+days
+comp
+coefs
+concurrent
+dlm
+nlm
+train_per_day
+iter_per_train
+night_concurrent
+replay
+diversity_threshold	(pour mutate_microbial_diversity_uniform)
+prior
+dev
+muta_proba
+split
+
+
+Autres paramètres non utilisés :
+--------------------------------
+train_multiplier: si dlm = optimise_proportional_training
+nb_pad: si dlm = optimise_gesture_padded
+decay: pour ancienne version de mutate_microbial_diversity_uniform
+diversity_weight: pour ancienne version de mutate_microbial_diversity_uniform
+bloat_weight: pour ancienne version de mutate_microbial_diversity_uniform

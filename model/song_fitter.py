@@ -11,7 +11,7 @@ Example
 
 Run the algorithm with the parameters from a file in JSON format.
 
-    $ python song_fitter.py --conf confs/conf.json
+    $ python song_fitter.py --config confs/conf.json
 
 Display help to see all the argument that can be given to the song fitter
 script.
@@ -20,38 +20,46 @@ script.
 
 Prevent the editor call to take notes before the run.
 
-    $ python song_fitter.py --conf confs/conf.json --no-desc
+    $ python song_fitter.py --config confs/conf.json --no-desc
 
 """
-
+# Resolve a problem between matplotlib, tkinter and python virtualenv
+import sys
+if "matplotlib" not in sys.modules:
+    import matplotlib
+    matplotlib.use('agg')
+    
 import argparse as ap
 import logging
 import os
 import datetime
-import pickle
 import json
 import subprocess
 from pprint import pformat
-import sys
 from shutil import copyfile
 from subprocess import call
 
 import numpy as np
 from fastdtw import fastdtw
 from scipy.io import wavfile
-from datasaver import DataSaver, QuietDataSaver
 
+from datasaver import DataSaver, QuietDataSaver
 from day_optimisers import optimise_gesture_dummy, optimise_gesture_padded,\
-                           optimise_gesture_whole
-from measures import bsa_measure, get_scores
+                           optimise_gesture_whole,\
+                           optimise_gesture_whole_local_search,\
+                           optimise_proportional_training,\
+                           optimise_root_mean_square_error
+from measures import bsa_measure, get_scores, normalize_and_center
 from night_optimisers import mutate_best_models_dummy, \
                              mutate_best_models_elite, \
                              mutate_microbial, \
                              mutate_microbial_extended_elite, \
                              mutate_microbial_extended_uniform, \
-                             mutate_microbial_diversity_uniform
+                             mutate_microbial_diversity_uniform, \
+                             mutate_microbial_diversity_continuous_uniform, \
+                             mutate_microbial_diversity_distance_uniform
 from song_model import SongModel
-
+import birdsonganalysis as bsa
 
 logger = logging.getLogger('root')
 EDITOR = os.environ.get('EDITOR', 'vim')
@@ -62,7 +70,10 @@ Available day learning models for the configuration files
 DAY_LEARNING_MODELS = {
     'optimise_gesture_dummy': optimise_gesture_dummy,
     'optimise_gesture_padded': optimise_gesture_padded,
-    'optimise_gesture_whole': optimise_gesture_whole
+    'optimise_gesture_whole': optimise_gesture_whole,
+    'optimise_gesture_whole_local_search': optimise_gesture_whole_local_search,
+    'optimise_proportional_training': optimise_proportional_training,
+    'optimise_root_mean_square_error': optimise_root_mean_square_error
 }
 """
 Available night learning models for the configuration files
@@ -73,22 +84,25 @@ NIGHT_LEARNING_MODELS = {
     'mutate_microbial': mutate_microbial,
     'mutate_microbial_extended_elite': mutate_microbial_extended_elite,
     'mutate_microbial_extended_uniform': mutate_microbial_extended_uniform,
-    'mutate_microbial_diversity_uniform': mutate_microbial_diversity_uniform
+    'mutate_microbial_diversity_uniform': mutate_microbial_diversity_uniform,
+    'mutate_microbial_diversity_continuous_uniform': mutate_microbial_diversity_continuous_uniform,
+    'mutate_microbial_diversity_distance_uniform': mutate_microbial_diversity_distance_uniform,
+    'no_night': None
 }
 """
 Available comparison methods for the configuration files
 """
+# TODO: fastdtw use still not fully implemented
 COMP_METHODS = {'linalg': lambda g, c: np.linalg.norm(g - c),
                 'fastdtw': lambda g, c: fastdtw(g, c, dist=2, radius=1)[0]}
 
-
-def fit_song(tutor_song, conf, datasaver=None):
+def fit_song(tutor_song, conf, datasavers=None):
     """Fit a song with a day and a night phase.
 
-    This function returns SongModel.
+    This function returns a list of SongModel.
 
     The fit is split in two phases: A day part and a night part. The day part
-    is an simple optimisation algorithm withing gesture. The night part
+    is a simple optimisation algorithm within gesture. The night part
     is a restructuring algorithm. See details in the modules
     `song_model.SongModel`, `day_optimisers` and `night_optimisers`
 
@@ -103,7 +117,7 @@ def fit_song(tutor_song, conf, datasaver=None):
         The dictionnary of all the parameters needed for the run.
         Values that are required with `fit_song are`:
             'dlm': The day learning model key from DAY_LEARNING_MODELS dict.
-            'nlm': The night learning model key from DAY_LEARNING_MODELS dict.
+            'nlm': The night learning model key from NIGHT_LEARNING_MODELS dict.
             'days': The number of day for a run
             'concurrent': The number of concurrent songs during the day.
             'comp_obj': a callable for the comparison.
@@ -129,6 +143,17 @@ def fit_song(tutor_song, conf, datasaver=None):
     night_optimisers
 
     """
+    tutor_song = normalize_and_center(tutor_song)
+    
+    tutor_feat = bsa.all_song_features(tutor_song, bsa.SR,
+                                       freq_range=bsa.FREQ_RANGE,
+                                       fft_step=bsa.FFT_STEP,
+                                       fft_size=bsa.FFT_SIZE)
+    
+    conf['measure_obj'] = lambda x: bsa_measure(x, bsa.SR, 
+                                                coefs=conf['coefs'],
+                                                tutor_feat=tutor_feat) 
+    
     day_optimisation = DAY_LEARNING_MODELS[conf['dlm']]
     night_optimisation = NIGHT_LEARNING_MODELS[conf['nlm']]
     nb_day = conf['days']
@@ -137,35 +162,72 @@ def fit_song(tutor_song, conf, datasaver=None):
     comp = conf['comp_obj']
     rng = conf['rng_obj']
     nb_split = conf.get('split', 10)
+    # muta_proba is a list of 3 values: [P(deletion), P(division), P(movement)]
+    muta_proba = conf['muta_proba']
 
     songs = [SongModel(song=tutor_song, priors=conf['prior'],
-                       nb_split=nb_split, rng=rng)
+                       nb_split=nb_split, rng=rng, muta_proba=muta_proba)
              for i in range(nb_conc_song)]
-    if datasaver is None:
-        datasaver = QuietDataSaver()
-    datasaver.add(moment='Start', songs=songs,
-                  scores=get_scores(tutor_song, songs, measure, comp))
+    
+    goal = measure(tutor_song)
+    
+    if datasavers is None:
+        datasavers = {}
+        datasavers["standard"] = QuietDataSaver()
+        datasavers["day"] = QuietDataSaver()
+        datasavers["night"] = QuietDataSaver()
+    datasavers["standard"].add(moment='Start', songs=songs,
+                  scores=get_scores(goal, songs, measure, comp))
+
+    cond1 = conf['dlm'] == 'optimise_gesture_whole'
+    cond2 = conf['dlm'] == 'optimise_gesture_whole_local_search'
+    cond3 = conf['dlm'] == 'optimise_proportional_training'
+    if cond1 or cond2 or cond3:
+        target = goal
+    else:
+        # case where conf['dlm'] == 'optimise_root_mean_square_error'
+        target = tutor_song
 
     for iday in range(nb_day):
-        logger.info('☀️️\t☀️️\t☀️️\tDay {} of {}\t☀️️\t☀️️\t☀️'.format(iday+1, nb_day)) # noqa
-        with datasaver.set_context('day_optim'):
-            songs = day_optimisation(songs, tutor_song, conf,
-                                     datasaver=datasaver)
-        score = get_scores(tutor_song, songs, measure, comp)
+        logger.info('*\t*\t*\tDay {} of {}\t*\t*\t*'.format(iday+1, nb_day))
+        with datasavers["day"].set_context('day_optim'):
+            songs = day_optimisation(songs, target, conf,
+                                     datasaver=datasavers["day"], iday=iday)
+        datasavers["day"].flush()  # Write the data in several times, otherwise it is too big and cause MemoryError. It means it has to be extract from the pickle file differently
+        score = get_scores(goal, songs, measure, comp)
         if iday + 1 != nb_day:
             logger.debug(score)
-            datasaver.add(moment='BeforeNight',
+            datasavers["standard"].add(moment='before_night',
                           songs=songs, scores=score)
-            logger.info('💤\t💤\t💤\tNight\t💤\t💤\t💤')
-            with datasaver.set_context('night_optim'):
-                songs = night_optimisation(songs,
-                                           tutor_song, iday, nb_day, conf, 
-                                           datasaver=datasaver)
-            score = get_scores(tutor_song, songs, measure, comp)
-            datasaver.add(moment='AfterNight', songs=songs, scores=score)
-        datasaver.write()
-    datasaver.add(moment='End', songs=songs,
-                  scores=get_scores(tutor_song, songs, measure, comp))
+            logger.info('z\tz\tz\tNight\tz\tz\tz')
+            with datasavers["standard"].set_context('night_optim'):
+                with datasavers["night"].set_context('replay'):
+                    if conf['nlm'] == "no_night":
+                        pass
+                    # kind of "multi objective diversity" by minimising the number of neighbours of a song and also keep good song with low error distance
+                    elif conf['nlm'] == "mutate_microbial_diversity_uniform":
+                        songs = night_optimisation(songs,
+                                                   goal, iday, nb_day, conf,
+                                                   datasavers=datasavers)
+                    # only diversity by maximising the metric between songs, metric not symmetric
+                    elif conf['nlm'] == "mutate_microbial_diversity_continuous_uniform":
+                        songs = night_optimisation(songs, conf, i_night=iday,
+                                                   datasavers=datasavers)
+                    # only diversity by maximising the distance between songs, using a symmetrical distance
+                    elif conf['nlm'] == "mutate_microbial_diversity_distance_uniform":
+                        songs = night_optimisation(songs, conf, i_night=iday,
+                                                   datasavers=datasavers)
+                    else:
+                        songs = night_optimisation(songs,
+                                                   goal,
+                                                   conf,
+                                                   datasaver=datasavers["standard"])
+            score = get_scores(goal, songs, measure, comp)
+            datasavers["night"].flush()  # Write the data in several times, otherwise it is too big and cause MemoryError. It means it has to be extract from the pickle file differently
+            datasavers["standard"].add(moment='after_night', songs=songs, scores=score)
+        datasavers["standard"].write()         
+    datasavers["standard"].add(moment='End', songs=songs,
+                               scores=get_scores(goal, songs, measure, comp))
     return songs
 
 
@@ -195,6 +257,7 @@ def main():
         reproduce the learning of a zebra finch for a given tutor song.
         """
     )
+    # if tutor not defined in the command-line, it gets the value None
     parser.add_argument('tutor', type=ap.FileType('rb'), nargs='?',
                         help='The targeted song to learn')
     parser.add_argument('--config', type=ap.FileType('r'), required=False,
@@ -222,12 +285,14 @@ def main():
     parser.add_argument('--nlm', type=str, required=False,
                         choices=NIGHT_LEARNING_MODELS,
                         help="night learning model")
+    # edit_conf = False by default. If --edit-conf appears in the command-line, becomes True
     parser.add_argument('--edit-conf', action='store_true')
     parser.add_argument('--coefs', type=ap.FileType('r'),
                         default='confs/default_coefs.json',
                         help="file with the coefs")
     parser.add_argument('--priors', type=ap.FileType('r'),
-                        default="confs/default_prior_max_min_dev.json")
+                        default="confs/default_prior_dev.json")
+    # if --no-desc appears in the command-line, it gets False, else it's True
     parser.add_argument('--no-desc', dest='edit_desc', action='store_false')
     args = parser.parse_args()
     if args.seed is None:
@@ -236,6 +301,7 @@ def main():
         seed = args.seed
     rng = np.random.RandomState(seed)
     conf = {}
+    # if the --config option is defined, meaning a config file is used
     if args.config:
         conf.update(json.load(args.config))
         try:  # Warning if reproduction (with commit key) and different commits
@@ -245,7 +311,13 @@ def main():
         except KeyError:
             pass
         try:
+            # sr = sampling rate
             sr, tsong = wavfile.read(conf['tutor'])
+        except KeyError:
+            pass
+        try:
+            seed = conf['seed']
+            rng = np.random.RandomState(seed)
         except KeyError:
             pass
         conf['commit'] = get_git_revision_hash()
@@ -265,6 +337,7 @@ def main():
     if tsong is None:
         sr, tsong = wavfile.read(args.tutor)
 
+    # the parameters in the command-line overwrite the ones defined with --config
     conf.update({k: v for k, v in argdata.items() if v is not None})
 
     date = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
@@ -272,39 +345,53 @@ def main():
     path = 'res/{}'.format(run_name)
     os.makedirs(path)
     wavfile.write(os.path.join(path, 'tutor.wav'), sr, tsong)
-    pmmd = json.load(args.priors)
-    conf.update(pmmd)
-    coefs = json.load(args.coefs)
-    conf.update(coefs)
+    prior_dev = json.load(args.priors)
+    
+    # update values, if they were not already defined in the config file
+    for key, value in prior_dev.items():
+        if key not in conf:
+            conf[key] = value
+            
+    if 'coefs' not in conf:
+        coefs = json.load(args.coefs)
+        conf.update(coefs)
     if args.edit_desc:
         write_run_description(path)
-    with open(os.path.join(path, 'params.json'), 'w') as f:
+    with open(os.path.join(path, 'conf.json'), 'w') as f:
         json.dump({k: conf[k] for k in conf if not k.endswith('_obj')},
                   f, indent=4)  # human readable parameters
     if args.edit_conf:
-        call([EDITOR, os.path.join(path, 'params.json')])
-        with open(os.path.join(path, 'params.json'), 'r') as f:
+        call([EDITOR, os.path.join(path, 'conf.json')])
+        with open(os.path.join(path, 'conf.json'), 'r') as f:
             conf = json.load(f)
 
-    datasaver = DataSaver(defaultdest=os.path.join(path, 'data_cur.pkl'))
+    datasavers = {}
+    datasavers["standard"] = DataSaver(os.path.join(path, 'data_cur.pkl'))
+    datasavers["day"] = DataSaver(os.path.join(path, 'data_day_cur.pkl'))
+    datasavers["night"] = DataSaver(os.path.join(path, 'data_night_cur.pkl'))
     logger.info(pformat(conf))
 
     conf['rng_obj'] = rng
-    conf['measure_obj'] = lambda x: bsa_measure(x, 44100)
     conf['comp_obj'] = COMP_METHODS[conf['comp']]
 
     #########################################
     # STOP READING CONF; START THE LEARNING #
     #########################################
     try:
-        songs = fit_song(tsong, conf, datasaver=datasaver)
-    except KeyboardInterrupt as e:
+        fit_song(tsong, conf, datasavers=datasavers)
+    except KeyboardInterrupt:
         logger.warning('Aborted')
         with open(os.path.join(path, 'aborted.txt'), 'a') as f:
             f.write('aborted\n')
     finally:
         logger.info('Saving the data.')
-        datasaver.write(os.path.join(path, 'data.pkl'))
+        datasavers["standard"].write(os.path.join(path, 'data.pkl'))
+        # back-ups are done, rename the files
+        subprocess.run(["rm", os.path.join(path, 'data_cur.pkl')])
+        subprocess.run(["mv", os.path.join(path, 'data_day_cur.pkl'),
+                        os.path.join(path, 'data_day.pkl')])
+        subprocess.run(["mv", os.path.join(path, 'data_night_cur.pkl'),
+                        os.path.join(path, 'data_night.pkl')])
     logger.info('!!!! Learning over !!!!')
     try:
         subprocess.Popen(['notify-send',
@@ -312,7 +399,10 @@ def main():
     except OSError:
         pass
     total_time = datetime.datetime.now() - start
-    logger.info('Run {} is over. Took {}'.format(run_name, total_time))
+    string = 'Run {} is over. Took {}'.format(run_name, total_time)
+    logger.info(string)
+    with open(os.path.join(path, 'execution_time.txt'), 'a') as f:
+        f.write(string)
 
 
 def write_run_description(path):

@@ -1,6 +1,6 @@
 {
   "#comment": [
-  "def of sin param : (a * t + b) * sin((t + phase) * f * 2 * pi)",
+  "def of sin param : (a * t + b) * sin(phase + 2 * pi * t * f)",
   "Format of each list",
   "```",
   "#alpha",

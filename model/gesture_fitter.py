@@ -1,10 +1,8 @@
 """Fit a gesture to real sound."""
 from copy import deepcopy
-import json
 import numpy as np
-import functools
 
-from hill_climbing import hill_climbing
+from hill_climbing import hill_climbing, stochastic_hill_climbing
 from synth import gen_sound, only_sin, gen_alphabeta, synthesize
 
 
@@ -25,8 +23,6 @@ def fit_gesture_hill(gesture, conf, prior):
             falpha_nb_args=13)),
         goal=goal,
         guess=np.array(prior),
-        guess_min=conf['mins'],
-        guess_max=conf['maxs'],
         guess_deviation=np.diag(conf['dev']),
         max_iter=nb_iter,
         comparison_method=comp,
@@ -37,6 +33,12 @@ def fit_gesture_hill(gesture, conf, prior):
 
 
 def _padded_gen_sound(songmodel, range_, change_index, param, out_ab=False):
+    """
+    Modifies one syllable of a song.
+    Creates a new song based on `songmodel` and where the `change_index` 
+    syllable is replaced by a new one created by `falpha` and `fbeta`
+    using `param`
+    """
     alpha_betas = []
     for i in range_[:-1]:
         if i != change_index:
@@ -91,8 +93,6 @@ def fit_gesture_padded(tutor, songmodel, gesture_index, conf):
             x)),
         goal=goal,
         guess=deepcopy(songmodel.gestures[gesture_index][1]),
-        guess_min=conf['mins'],
-        guess_max=conf['maxs'],
         guess_deviation=np.diag(conf['dev']),
         max_iter=nb_iter,
         comparison_method=comp,
@@ -117,12 +117,30 @@ def fit_gesture_whole(measured_tutor, songmodel, gesture_index, conf):
             x)),
         goal=goal,
         guess=deepcopy(songmodel.gestures[gesture_index][1]),
-        guess_min=conf['mins'],
-        guess_max=conf['maxs'],
         guess_deviation=np.diag(conf['dev']),
         max_iter=nb_iter,
         comparison_method=comp,
         temp_max=temp,
+        verbose=False,
+        rng=rng)
+    return x, score
+
+def fit_gesture_whole_local_search(measured_tutor, songmodel, gesture_index, conf):
+    measure = conf['measure_obj']
+    comp = conf['comp_obj']
+    nb_iter = conf['iter_per_train']
+    rng = conf.get('rng', None)
+    x, dummy_y, score = stochastic_hill_climbing(
+        function=lambda x: measure(_padded_gen_sound(
+            songmodel,
+            range(0, len(songmodel.gestures)),
+            gesture_index,
+            x)),
+        goal=measured_tutor,
+        guess=deepcopy(songmodel.gestures[gesture_index][1]),
+        guess_deviation=np.diag(conf['dev']),
+        max_iter=nb_iter,
+        comparison_method=comp,
         verbose=False,
         rng=rng)
     return x, score

@@ -7,6 +7,7 @@ beta given.
 
 import numpy as np
 import birdsynth
+import birdsonganalysis as bsa
 
 
 def exp_sin(x, p, nb_exp=2, nb_sin=2):
@@ -24,7 +25,6 @@ def only_sin(x, p, nb_sin=3):
     return np.sum([(next(ip) * x + next(ip))
                    * np.sin(next(ip) + (2*np.pi * x) * next(ip))
                    for i in range(nb_sin)] + [next(ip)], axis=0)
-
 
 def exp_sin_str(p, nb_exp=2, nb_sin=2, x='x'):
     """Return string representation of `exp_sin`."""
@@ -49,7 +49,7 @@ def gen_sound(params, length, falpha, fbeta, falpha_nb_args, beg=0):
              falpha(t:np.array[t], params:np.array[nb_alpha_params]):
                 np.array[t]
     fbeta - The genenator function for beta of signature
-             falpha(t:pn.array[t], params:np.array[nb_beta_params]):
+             fbeta(t:pn.array[t], params:np.array[nb_beta_params]):
                 np.array[t]
     falpha_nb_args - Number of params falpha needs. It will be used for
                      the slicing of `params`. Indeed, in the code, we do
@@ -79,7 +79,7 @@ def gen_alphabeta(params, length, falpha, fbeta,
              falpha(t:np.array[t], params:np.array[nb_alpha_params]):
                 np.array[t]
     fbeta - The genenator function for beta of signature
-             falpha(t:pn.array[t], params:np.array[nb_beta_params]):
+             fbeta(t:np.array[t], params:np.array[nb_beta_params]):
                 np.array[t]
     falpha_nb_args - Number of params falpha needs. It will be used for
                      the slicing of `params`. Indeed, in the code, we do
@@ -93,23 +93,36 @@ def gen_alphabeta(params, length, falpha, fbeta,
     Returns - A 2D numpy.array of shape (length, 2) with in the first column
     the alpha parameters and in the second the beta parameters.
     """
-    if pad:
-        padding = 2
-    else:
-        padding = 0
-    # + 2 padding is necessary with ba synth.
-    t = beg / 44100 + np.linspace(0, (length+2)/44100, length + padding)
+    t = beg / bsa.SR + np.linspace(0, length/bsa.SR, length)
+    
+    if pad == 'last' or pad is True:
+        pad_t = np.array([length+1, length+2]) / bsa.SR
+        t = np.concatenate((t, pad_t))
+        
     alpha_beta = np.stack(
         (
             falpha(t, params[:falpha_nb_args]),
             fbeta(t, params[falpha_nb_args:])
         ), axis=-1)
+        
     alpha_beta[:, 0] = np.where(alpha_beta[:, 0] < 0, 0, alpha_beta[:, 0])
+    # Force Beta to only have negative values
+    """
+    Maximum beta value should be  -0.002 instead of 0
+    Because in the beta produced with Boari's method, outside silence periods,
+    the maximum beta value is -0.002 and not 0 (cf. article)
+    Careful though, if you want to reproduce older simulations
+    which used max beta = 0 (check in the desc.md file)
+    """
+#    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > 0, 0, alpha_beta[:, 1])
+    alpha_beta[:, 1] = np.where(alpha_beta[:, 1] > -0.002, -0.002, alpha_beta[:, 1])
     return alpha_beta
 
 
 def synthesize(alpha_beta, fixed_normalize=False, boundary=150000):
     """Return the song signal given the alpha beta parameters.
+
+    This function reduce by 2 samples the song produced
 
     alpha_beta - A 2d numpy.array of shape (length, 2)
                  with alpha on the alpha_beta[:, 0] elements

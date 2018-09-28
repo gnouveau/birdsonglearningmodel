@@ -9,16 +9,13 @@ import json
 from glob import glob
 import logging
 import itertools
-from pprint import pprint
 import subprocess
-import multiprocessing
 
 import numpy as np
 from scipy.io import wavfile
 from joblib import Parallel, delayed, cpu_count
 
 from song_fitter import fit_song, COMP_METHODS
-from measures import bsa_measure
 from datasaver import DataSaver
 
 logger = logging.getLogger('root')
@@ -26,18 +23,19 @@ EDITOR = os.environ.get('EDITOR', 'vim')
 
 
 def get_confs(confdir):
-    """Iterator over all combinations of the files in subfolders."""
+    """Iterator over all combinations of the files in subfolders.
+    Be careful of the .json~ files in the config folders """
     confs = []
     for folder in sorted(glob(join(confdir, "*"))):
-        confs.append([])
         if not isdir(folder):
             continue
+        confs.append([])
         for conf_file_name in sorted(glob(join(folder, '*.json'))):
             with open(conf_file_name) as conf_file:
                 try:
                     confs[-1].append(json.load(conf_file))
                 except json.decoder.JSONDecodeError:
-                    print(conf_file_name)
+                    print('json.decoder.JSONDecodeError:', conf_file_name)
                     raise
     for conf_prod in itertools.product(*confs):
         tot_conf = dict()
@@ -48,6 +46,7 @@ def get_confs(confdir):
                 names.append(conf['name'])
             except KeyError:
                 pass
+            
         yield '+'.join(names), tot_conf
 
 
@@ -56,9 +55,12 @@ def start_run(run_name, conf, res_grid_path):
     try:
         start = datetime.datetime.now()
         print('starting {}'.format(run_name))
-        conf['rng_obj'] = np.random.RandomState()
-        conf['measure_obj'] = lambda x: bsa_measure(x, 44100,
-                                                    coefs=conf['coefs'])
+        
+        if conf['seed'] is not None:
+            conf['rng_obj'] = np.random.RandomState(conf['seed'])
+        else:
+            conf['rng_obj'] = np.random.RandomState()
+        
         conf['comp_obj'] = COMP_METHODS[conf.get('comp', 'linalg')]
         conf['name'] = run_name
         with open(conf['tutor'], 'rb') as tutor_f:
@@ -66,12 +68,23 @@ def start_run(run_name, conf, res_grid_path):
         run_path = join(res_grid_path, run_name)
         os.makedirs(run_path)
         shutil.copyfile(conf['tutor'], join(run_path, 'tutor.wav'))
-        datasaver = DataSaver(join(run_path, 'data_cur.pkl'))
+        datasavers = {}
+        datasavers["standard"] = DataSaver(join(run_path, 'data_cur.pkl'))
+        datasavers["day"] = DataSaver(join(run_path, 'data_day_cur.pkl'))
+        datasavers["night"] = DataSaver(join(run_path, 'data_night_cur.pkl'))
         with open(join(run_path, 'conf.json'), 'w') as conf_file:
             json.dump({key: conf[key] for key in conf
                        if not key.endswith('obj')}, conf_file, indent=4)
-        songs = fit_song(tutor, conf, datasaver)
-        datasaver.write(join(run_path, 'data.pkl'))
+        # begin simulation
+        fit_song(tutor, conf, datasavers)
+        # end simulation
+        # rename and remove tempory files to only keep final files
+        datasavers["standard"].write(join(run_path, 'data.pkl'))
+        subprocess.run(["rm", join(run_path, 'data_cur.pkl')])
+        subprocess.run(["mv", join(run_path, "data_day_cur.pkl"),
+                        join(run_path, "data_day.pkl")])
+        subprocess.run(["mv", join(run_path, "data_night_cur.pkl"),
+                        join(run_path, "data_night.pkl")])
         print(run_name, 'is over and took', datetime.datetime.now() - start)
         print('By the way, it is {}'.format(
             datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
@@ -90,6 +103,8 @@ def main():
     parser.add_argument('confdir', type=str)
     parser.add_argument('--no-desc', dest='edit_desc', action='store_false')
     args = parser.parse_args()
+    
+    # /!\ If single-job is used, outdir has to be defined
     if args.single_job:
         with open(args.confdir, 'r') as f:
             conf = json.load(f)

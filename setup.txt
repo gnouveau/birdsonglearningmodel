@@ -1,0 +1,9 @@
+Dans l'env virtuel :
+conda install numpy scipy matplotlib seaborn jupyter ipython pandas cython
+pip install aubio libtfr
+
+ensuite, aller dans birdsonganalysis:
+python setup.py develop
+
+ensuite, aller dans birdsynth:
+python setup.py install

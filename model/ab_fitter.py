@@ -8,6 +8,7 @@ from synth import f, f_str
 from fastdtw import fastdtw
 
 from hill_climbing import hill_climbing
+import birdsonganalysis as bsa
 
 sns.set_context('colorblind')
 
@@ -46,7 +47,7 @@ def fit_func(goal, f, params, dev, mins, maxs):
 
 if __name__ == "__main__":
     def _alphaf(x, p):
-        x = x/44100
+        x = x/bsa.SR
         return f(x, p, 1, 3)
 
     goal = np.loadtxt('../../data/ba_syllable_a_end_ab.dat')

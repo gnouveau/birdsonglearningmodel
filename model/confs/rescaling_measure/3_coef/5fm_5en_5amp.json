@@ -1,0 +1,5 @@
+{
+	"name": "5fm_5en_5amp",
+	"coefs": {"fm": 5, "am": 0, "entropy": 5, "goodness": 0,
+				"amplitude": 5, "pitch": 0}
+}

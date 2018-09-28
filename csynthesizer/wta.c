@@ -17,7 +17,7 @@ main(int argc, char *argv[]){
   
   if(argc < 2){
     printf("You must give input soundfile \n");
-    exit(-1);
+    return(-1);
   }
 		
 
